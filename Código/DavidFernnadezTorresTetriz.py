@@ -296,6 +296,34 @@ TETRIMINOS = {
         [[0, 1, 0],
          [1, 1, 0],
          [1, 0, 0]]
+    ],
+    'U': [
+        [[1, 0, 1],
+         [1, 1, 1],
+         [0, 0, 0]],
+        [[0, 1, 1],
+         [0, 1, 0],
+         [0, 1, 1]],
+        [[0, 0, 0],
+         [1, 1, 1],
+         [1, 0, 1]],
+        [[1, 1, 0],
+         [0, 1, 0],
+         [1, 1, 0]]
+    ],
+    '+': [
+        [[0, 1, 0],
+         [1, 1, 1],
+         [0, 1, 0]],
+        [[0, 1, 0],
+         [1, 1, 1],
+         [0, 1, 0]],
+        [[0, 1, 0],
+         [1, 1, 1],
+         [0, 1, 0]],
+        [[0, 1, 0],
+         [1, 1, 1],
+         [0, 1, 0]]
     ]
 }
 
@@ -307,7 +335,9 @@ COLORES_TETRIMINOS = {
     'O': "#f0f000",  # Amarillo
     'S': "#00f000",  # Verde
     'T': "#a000f0",  # Púrpura
-    'Z': "#f00000"   # Rojo
+    'Z': "#f00000",  # Rojo
+    'U': "#ff00ff",  # Magenta
+    '+': "#ff8800"   # Naranja brillante
 }
 
 
@@ -411,6 +441,12 @@ def actualizar_tablero(game_data):
 
 
 def jugar(ventana, boton_jugar):
+    # Pedir nombre del jugador antes de comenzar
+    nombre_jugador = pedir_nombre_jugador()
+    if not nombre_jugador:
+        # Si el usuario cancela, no iniciamos el juego
+        return
+        
     print("Iniciando juego...")
     messagebox.showinfo("Juego", "¡El juego ha comenzado!") 
     boton_jugar.config(state=tk.DISABLED)
@@ -424,11 +460,11 @@ def jugar(ventana, boton_jugar):
     
     # Crear layout dividido en dos secciones
     # Frame para la matriz de juego (izquierda)
-    frame_matriz = tk.Frame(ventana_juego, bg="#1a2a2e", bd=4, relief=tk.GROOVE)
+    frame_matriz = tk.Frame(ventana_juego, bg="#1a1a2e", bd=4, relief=tk.GROOVE)
     frame_matriz.pack(side=tk.LEFT, padx=20, pady=20, fill=tk.BOTH, expand=True)
 
     # Frame para información del juego (derecha)
-    frame_info = tk.Frame(ventana_juego, bg="#1a2a2e", bd=4, relief=tk.GROOVE, width=300)
+    frame_info = tk.Frame(ventana_juego, bg="#1a1a2e", bd=4, relief=tk.GROOVE, width=300)
     frame_info.pack(side=tk.RIGHT, padx=20, pady=20, fill=tk.BOTH)
     
     # Título para el panel de información
@@ -440,6 +476,16 @@ def jugar(ventana, boton_jugar):
         font=FUENTE_RETRO
     )
     label_info.pack(pady=10)
+    
+    # Etiqueta para nombre del jugador
+    label_jugador = tk.Label(
+        frame_info,
+        text=f"JUGADOR: {nombre_jugador}",
+        bg="#1a2a2e",
+        fg="white",
+        font=FUENTE_RETRO
+    )
+    label_jugador.pack(pady=10)
     
     # Etiqueta para la siguiente pieza
     label_siguiente = tk.Label(
@@ -472,6 +518,20 @@ def jugar(ventana, boton_jugar):
     )
     label_puntos.pack(pady=20)
     
+    # Botón de pausa
+    boton_pausa = tk.Button(
+        frame_info,
+        text="PAUSA",
+        bg="#ffd369", fg="#1a1a2e",
+        font=FUENTE_RETRO,
+        width=10, height=2,
+        command=lambda: mostrar_menu_pausa(ventana_juego, game_data),
+        relief=tk.GROOVE
+    )
+    boton_pausa.pack(pady=20)
+    boton_pausa.bind("<Enter>", lambda e: boton_pausa.config(bg="#ffe085"))
+    boton_pausa.bind("<Leave>", lambda e: boton_pausa.config(bg="#ffd369"))
+    
     # Inicializar el juego y crear el tablero
     tablero = inicializar_tablero(frame_matriz)
     
@@ -495,7 +555,8 @@ def jugar(ventana, boton_jugar):
         "label_puntos": label_puntos,
         "juego_activo": True,
         "ventana_juego": ventana_juego,  # Guardar referencia a la ventana
-        "boton_jugar": boton_jugar  # Guardar referencia al botón
+        "boton_jugar": boton_jugar,  # Guardar referencia al botón
+        "nombre_jugador": nombre_jugador  # Guardar nombre del jugador
     }
     
     # Actualizar visualización inicial
@@ -506,294 +567,87 @@ def jugar(ventana, boton_jugar):
     ventana_juego.bind("<Right>", lambda event: mover_pieza(game_data, 1, 0))
     ventana_juego.bind("<Down>", lambda event: mover_pieza(game_data, 0, 1))
     ventana_juego.bind("<space>", lambda event: rotar_pieza(game_data))
+    ventana_juego.bind("<p>", lambda event: mostrar_menu_pausa(ventana_juego, game_data))  # Tecla P para pausa
     ventana_juego.focus_set()  # Dar foco a la ventana para capturar eventos de teclado
     
     # Iniciar bucle de caída automática
     ventana_juego.after(1000, lambda: caida_automatica(ventana_juego, game_data))
 
 
-def mover_pieza(game_data, delta_x, delta_y):
-    """Mueve la pieza en la dirección especificada si es posible"""
-    if not game_data["juego_activo"]:
-        return
+def posicionar_ventana(ventana, ancho, alto):
+    """Centra una ventana de Tkinter en la pantalla."""
+    ventana.update_idletasks()
+    ancho_pantalla = ventana.winfo_screenwidth()
+    alto_pantalla = ventana.winfo_screenheight()
+    x = (ancho_pantalla // 2) - (ancho // 2)
+    y = (alto_pantalla // 2) - (alto // 2)
+    ventana.geometry(f"{ancho}x{alto}+{x}+{y}")
+
+def pedir_nombre_jugador():
+    """Muestra una ventana para solicitar el nombre del jugador"""
+    # Crear una ventana simple
+    ventana_nombre = tk.Toplevel()
+    ventana_nombre.title("Nombre de Jugador")
+    ventana_nombre.geometry("400x200")
+    ventana_nombre.config(bg="#1a2a2e")
+    ventana_nombre.resizable(False, False)
+    ventana_nombre.transient()  # Ventana modal
     
-    # Guardar posición actual para poder restaurarla
-    x_original, y_original = game_data["x"], game_data["y"]
+    # Centrar la ventana
+    posicionar_ventana(ventana_nombre, 400, 200)
     
-    # Intentar mover
-    game_data["x"] += delta_x
-    game_data["y"] += delta_y
+    # Etiqueta para instrucciones
+    label = tk.Label(
+        ventana_nombre,
+        text="Ingresa tu nombre:",
+        bg="#1a2a2e", fg="white",
+        font=FUENTE_RETRO
+    )
+    label.pack(pady=20)
     
-    # Verificar si es un movimiento válido
-    if es_movimiento_valido(game_data):
-        # Actualizar tablero
-        actualizar_tablero(game_data)
-    else:
-        # Restaurar posición
-        game_data["x"], game_data["y"] = x_original, y_original
-        
-        # Si intentó moverse hacia abajo y falló, significa que la pieza debe fijarse
-        if delta_y > 0:
-            fijar_pieza(game_data)
+    # Campo para texto
+    entrada = tk.Entry(
+        ventana_nombre,
+        font=FUENTE_RETRO,
+        width=20
+    )
+    entrada.pack(pady=10)
+    entrada.focus_set()  # Dar foco a la entrada
+    
+    # Variable para almacenar el nombre
+    nombre = [None]  # Usamos una lista para poder modificarla desde funciones anidadas
+    
+    # Función para confirmar el nombre
+    def confirmar():
+        if entrada.get().strip():  # Verificar que no esté vacío
+            nombre[0] = entrada.get().strip()
+            ventana_nombre.destroy()
+    
+    # Botón para confirmar
+    boton = tk.Button(
+        ventana_nombre,
+        text="COMENZAR",
+        bg="#4ecca3", fg="#1a1a2e",
+        font=FUENTE_RETRO,
+        command=confirmar,
+        relief=tk.GROOVE
+    )
+    boton.pack(pady=20)
+    
+    # Evento Enter para confirmar
+    entrada.bind("<Return>", lambda event: confirmar())
+    
+    # Esperar hasta que se cierre la ventana
+    ventana_nombre.wait_window()
+    
+    return nombre[0]
 
 
-def rotar_pieza(game_data):
-    """Rota la pieza si es posible"""
-    if not game_data["juego_activo"]:
-        return
-    
-    # Guardar rotación actual
-    rotacion_original = game_data["rotacion"]
-    
-    # Calcular nueva rotación
-    rotaciones_totales = longitud(TETRIMINOS[game_data["pieza_actual"]])
-    game_data["rotacion"] = (game_data["rotacion"] + 1) % rotaciones_totales
-    
-    # Verificar si es un movimiento válido
-    if es_movimiento_valido(game_data):
-        # Actualizar tablero
-        actualizar_tablero(game_data)
-    else:
-        # Restaurar rotación
-        game_data["rotacion"] = rotacion_original
-
-
-def actualizar_tablero(game_data):
-    """Actualiza la visualización del tablero con la pieza actual"""
-    # Limpiar solo las celdas que no están fijas
-    tablero = game_data["tablero"]
-    tablero_fijo = game_data.get("tablero_fijo", [])
-    
-    # Primero pintar el fondo en todas las celdas
-    for i in range(longitud(tablero)):
-        for j in range(longitud(tablero[0])):
-            # Si la celda no está fijada, pintarla de fondo
-            if tablero_fijo is None or i >= longitud(tablero_fijo) or j >= longitud(tablero_fijo[i]) or tablero_fijo[i][j] is None:
-                tablero[i][j].config(bg="#1a2a6d")
-    
-    # Mostrar piezas fijas
-    if tablero_fijo:
-        for i in range(longitud(tablero_fijo)):
-            for j in range(longitud(tablero_fijo[i])):
-                if tablero_fijo[i][j] is not None:
-                    tablero[i][j].config(bg=tablero_fijo[i][j])
-    
-    # Mostrar la pieza actual
-    pieza = TETRIMINOS[game_data["pieza_actual"]][game_data["rotacion"]]
-    color = COLORES_TETRIMINOS[game_data["pieza_actual"]]
-    
-    for i in range(longitud(pieza)):
-        for j in range(longitud(pieza[i])):
-            if pieza[i][j] == 1:
-                y = game_data["y"] + i
-                x = game_data["x"] + j
-                
-                # Verificar que está dentro de los límites
-                if 0 <= y < longitud(tablero) and 0 <= x < longitud(tablero[0]):
-                    tablero[y][x].config(bg=color)
-
-
-def fijar_pieza(game_data):
-    """Fija la pieza en su posición actual y genera una nueva"""
-    # Obtener información de la pieza actual
-    pieza = TETRIMINOS[game_data["pieza_actual"]][game_data["rotacion"]]
-    color = COLORES_TETRIMINOS[game_data["pieza_actual"]]
-    
-    # Si no existe el tablero fijo, crearlo
-    if "tablero_fijo" not in game_data:
-        # Inicializar tablero_fijo como una matriz del mismo tamaño que tablero, con None
-        tablero_fijo = []
-        for i in range(longitud(game_data["tablero"])):
-            fila = []
-            for j in range(longitud(game_data["tablero"][0])):
-                fila = agregar(fila, None)
-            tablero_fijo = agregar(tablero_fijo, fila)
-        game_data["tablero_fijo"] = tablero_fijo
-    
-    # Fijar la pieza en el tablero_fijo
-    for i in range(longitud(pieza)):
-        for j in range(longitud(pieza[i])):
-            if pieza[i][j] == 1:
-                y = game_data["y"] + i
-                x = game_data["x"] + j
-                
-                # Verificar que está dentro de los límites
-                if 0 <= y < longitud(game_data["tablero_fijo"]) and 0 <= x < longitud(game_data["tablero_fijo"][0]):
-                    game_data["tablero_fijo"][y][x] = color
-    
-    # Verificar líneas completas
-    lineas_completas = verificar_lineas_completas(game_data)
-    
-    if lineas_completas:
-        # Eliminar líneas completas
-        for linea in lineas_completas:
-            eliminar_linea(game_data, linea)
-        
-        # Sumar puntos: 100 puntos por cada línea completada
-        puntos_nuevos = longitud(lineas_completas) * 100
-        game_data["puntos"] += puntos_nuevos
-        
-        # Actualizar el contador de puntos
-        game_data["label_puntos"].config(text=f"PUNTOS: {game_data['puntos']}")
-    
-    # Generar una nueva pieza
-    pieza_actual, pieza_siguiente = game_data["pieza_siguiente"], iniciar_nuevas_piezas()[0]
-    game_data["pieza_actual"] = pieza_actual
-    game_data["pieza_siguiente"] = pieza_siguiente
-    game_data["rotacion"] = 0
-    game_data["x"] = 5
-    game_data["y"] = 0
-    
-    # Mostrar la siguiente pieza
-    mostrar_siguiente_pieza(game_data["frame_siguiente"], pieza_siguiente)
-    
-    # Verificar si es game over (si no hay espacio para la nueva pieza)
-    if not es_movimiento_valido(game_data):
-        game_data["juego_activo"] = False
-        messagebox.showinfo("Game Over", f"¡Juego terminado!\nPuntuación final: {game_data['puntos']}")
-        
-        # Habilitar el botón de jugar en la ventana principal
-        game_data["boton_jugar"].config(state=tk.NORMAL)
-        
-        # Cerrar la ventana de juego después de mostrar el mensaje
-        game_data["ventana_juego"].destroy()
-        return  # Salir de la función para evitar actualizar el tablero
-    
-    # Actualizar el tablero
-    actualizar_tablero(game_data)
-
-
-def verificar_lineas_completas(game_data):
-    """Verifica si hay líneas horizontales completas y devuelve sus índices"""
-    tablero_fijo = game_data["tablero_fijo"]
-    lineas_completas = []
-    
-    # Verificar cada fila
-    for i in range(longitud(tablero_fijo)):
-        fila_completa = True
-        for j in range(longitud(tablero_fijo[i])):
-            if tablero_fijo[i][j] is None:
-                fila_completa = False
-                break
-        
-        if fila_completa:
-            lineas_completas = agregar(lineas_completas, i)
-    
-    return lineas_completas
-
-
-def eliminar_linea(game_data, indice_linea):
-    """Elimina una línea y mueve todas las líneas superiores hacia abajo"""
-    tablero_fijo = game_data["tablero_fijo"]
-    
-    # Comenzar desde la línea a eliminar y mover hacia arriba
-    for i in range(indice_linea, 0, -1):
-        for j in range(longitud(tablero_fijo[i])):
-            # Copiar el color de la línea de arriba
-            tablero_fijo[i][j] = tablero_fijo[i-1][j]
-    
-    # Limpiar la línea superior
-    for j in range(longitud(tablero_fijo[0])):
-        tablero_fijo[0][j] = None
-
-
-def es_movimiento_valido(game_data):
-    """Verifica si la posición y rotación actuales son válidas"""
-    pieza = TETRIMINOS[game_data["pieza_actual"]][game_data["rotacion"]]
-    tablero_fijo = game_data.get("tablero_fijo")  # Puede ser None al inicio
-    
-    for i in range(longitud(pieza)):
-        for j in range(longitud(pieza[i])):
-            if pieza[i][j] == 1:
-                # Calcular posición en el tablero
-                y = game_data["y"] + i
-                x = game_data["x"] + j
-                
-                # Verificar límites del tablero
-                if (x < 0 or x >= longitud(game_data["tablero"][0]) or 
-                    y < 0 or y >= longitud(game_data["tablero"])):
-                    return False
-                
-                # Verificar colisión con piezas fijas
-                if tablero_fijo is not None and y < longitud(tablero_fijo) and x < longitud(tablero_fijo[y]):
-                    if tablero_fijo[y][x] is not None:
-                        return False
-    
-    return True
-
-
-def fijar_pieza(game_data):
-    """Fija la pieza en su posición actual y genera una nueva"""
-    # Obtener información de la pieza actual
-    pieza = TETRIMINOS[game_data["pieza_actual"]][game_data["rotacion"]]
-    color = COLORES_TETRIMINOS[game_data["pieza_actual"]]
-    
-    # Si no existe el tablero fijo, crearlo
-    if "tablero_fijo" not in game_data:
-        # Inicializar tablero_fijo como una matriz del mismo tamaño que tablero, con None
-        tablero_fijo = []
-        for i in range(longitud(game_data["tablero"])):
-            fila = []
-            for j in range(longitud(game_data["tablero"][0])):
-                fila = agregar(fila, None)
-            tablero_fijo = agregar(tablero_fijo, fila)
-        game_data["tablero_fijo"] = tablero_fijo
-    
-    # Fijar la pieza en el tablero_fijo
-    for i in range(longitud(pieza)):
-        for j in range(longitud(pieza[i])):
-            if pieza[i][j] == 1:
-                y = game_data["y"] + i
-                x = game_data["x"] + j
-                
-                # Verificar que está dentro de los límites
-                if 0 <= y < longitud(game_data["tablero_fijo"]) and 0 <= x < longitud(game_data["tablero_fijo"][0]):
-                    game_data["tablero_fijo"][y][x] = color
-    
-    # Verificar líneas completas
-    lineas_completas = verificar_lineas_completas(game_data)
-    
-    if lineas_completas:
-        # Eliminar líneas completas
-        for linea in lineas_completas:
-            eliminar_linea(game_data, linea)
-        
-        # Sumar puntos: 100 puntos por cada línea completada
-        puntos_nuevos = longitud(lineas_completas) * 100
-        game_data["puntos"] += puntos_nuevos
-        
-        # Actualizar el contador de puntos
-        game_data["label_puntos"].config(text=f"PUNTOS: {game_data['puntos']}")
-    
-    # Generar una nueva pieza
-    pieza_actual, pieza_siguiente = game_data["pieza_siguiente"], iniciar_nuevas_piezas()[0]
-    game_data["pieza_actual"] = pieza_actual
-    game_data["pieza_siguiente"] = pieza_siguiente
-    game_data["rotacion"] = 0
-    game_data["x"] = 5
-    game_data["y"] = 0
-    
-    # Mostrar la siguiente pieza
-    mostrar_siguiente_pieza(game_data["frame_siguiente"], pieza_siguiente)
-    
-    # Verificar si es game over (si no hay espacio para la nueva pieza)
-    if not es_movimiento_valido(game_data):
-        game_data["juego_activo"] = False
-        messagebox.showinfo("Game Over", f"¡Juego terminado!\nPuntuación final: {game_data['puntos']}")
-        
-        # Habilitar el botón de jugar en la ventana principal
-        game_data["boton_jugar"].config(state=tk.NORMAL)
-        
-        # Cerrar la ventana de juego después de mostrar el mensaje
-        game_data["ventana_juego"].destroy()
-        return  # Salir de la función para evitar actualizar el tablero
-    
-    # Actualizar el tablero
-    actualizar_tablero(game_data)
-
-
-def mostrar_menu_pausa(ventana_juego):
+def mostrar_menu_pausa(ventana_juego, game_data):
     """Muestra un menú de pausa con opciones para continuar, guardar o salir"""
+    # Pausar el juego
+    game_data["juego_pausado"] = True
+    
     # Crear ventana modal para el menú de pausa
     menu_pausa = tk.Toplevel(ventana_juego)
     menu_pausa.title("PAUSA")
@@ -810,7 +664,7 @@ def mostrar_menu_pausa(ventana_juego):
     label_pausa = tk.Label(
         menu_pausa,
         text="PAUSA",
-        bg="#1a1a2e",
+        bg="#1a2a2e",
         fg="white",
         font=("Press Start 2P", 18, "bold")
     )
@@ -820,10 +674,10 @@ def mostrar_menu_pausa(ventana_juego):
     boton_continuar = tk.Button(
         menu_pausa,
         text="CONTINUAR",
-        bg="#4ecca3", fg="#1a1a2e",
+        bg="#4ecca3", fg="#1a2e2e",
         font=FUENTE_RETRO,
         width=12, height=2,
-        command=menu_pausa.destroy,  # Simplemente cierra el menú para continuar
+        command=lambda: continuar_juego(menu_pausa, game_data),
         relief=tk.GROOVE
     )
     boton_continuar.pack(pady=15)
@@ -834,10 +688,10 @@ def mostrar_menu_pausa(ventana_juego):
     boton_guardar = tk.Button(
         menu_pausa,
         text="GUARDAR",
-        bg="#ffd369", fg="#1a1a2e",
+        bg="#ffd369", fg="#1a2a2e",
         font=FUENTE_RETRO,
         width=12, height=2,
-        command=lambda: guardar_partida(menu_pausa),
+        command=lambda: guardar_partida(game_data, menu_pausa),
         relief=tk.GROOVE
     )
     boton_guardar.pack(pady=15)
@@ -851,7 +705,7 @@ def mostrar_menu_pausa(ventana_juego):
         bg="#e84545", fg="white",
         font=FUENTE_RETRO,
         width=12, height=2,
-        command=lambda: salir_partida(ventana_juego, menu_pausa),
+        command=lambda: salir_partida(game_data, menu_pausa),
         relief=tk.GROOVE
     )
     boton_salir.pack(pady=15)
@@ -859,37 +713,231 @@ def mostrar_menu_pausa(ventana_juego):
     boton_salir.bind("<Leave>", lambda e: boton_salir.config(bg="#e84545"))
 
 
-def posicionar_ventana(ventana, ancho, alto):
-    """Centra una ventana en la pantalla"""
-    # Obtener dimensiones de la pantalla
-    ancho_pantalla = ventana.winfo_screenwidth()
-    alto_pantalla = ventana.winfo_screenheight()
-    
-    # Calcular posición x,y para la ventana
-    x = (ancho_pantalla / 2) - (ancho / 2)
-    y = (alto_pantalla / 2) - (alto / 2)
-    
-    # Establecer geometría
-    ventana.geometry(f"{ancho}x{alto}+{int(x)}+{int(y)}")
+def continuar_juego(ventana_menu, game_data):
+    """Continúa el juego después de la pausa"""
+    game_data["juego_pausado"] = False
+    ventana_menu.destroy()
+    # Reactivar la caída automática
+    game_data["ventana_juego"].after(1000, lambda: caida_automatica(game_data["ventana_juego"], game_data))
 
 
-def guardar_partida(ventana_menu):
-        puntos_nuevos = longitud(lineas_completas) * 100
-        game_data["puntos"] += puntos_nuevosrdar
-        agebox.showinfo("Guardar", "¡Partida guardada correctamente!")
-        # Actualizar el contador de puntos
+def guardar_partida(game_data, ventana_menu=None):
+    """Guarda el estado actual de la partida en un archivo con el nombre del jugador"""
+    try:
+        # Crear directorio si no existe
+        directorio_guardados = "Código/partidas_guardadas"
+        if not os.path.exists(directorio_guardados):
+            os.makedirs(directorio_guardados)
+        
+        # Generar nombre de archivo con nombre del jugador y timestamp
+        import time
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        nombre_jugador_seguro = ''.join(c if c.isalnum() else '_' for c in game_data["nombre_jugador"])
+        nombre_archivo = f"{nombre_jugador_seguro}_{timestamp}.txt"
+        ruta_archivo = f"{directorio_guardados}/{nombre_archivo}"
+        
+        # Crear archivo y guardar datos de la partida
+        with open(ruta_archivo, "w") as archivo:
+            archivo.write(f"Jugador: {game_data['nombre_jugador']}\n")
+            archivo.write(f"Puntos: {game_data['puntos']}\n")
+            archivo.write(f"Fecha: {time.strftime('%d/%m/%Y %H:%M:%S')}\n")
+            archivo.write("Estado del tablero:\n")
+            
+            # Guardar el estado del tablero fijo
+            if "tablero_fijo" in game_data:
+                for i in range(longitud(game_data["tablero_fijo"])):
+                    linea = ""
+                    for j in range(longitud(game_data["tablero_fijo"][0])):
+                        celda = game_data["tablero_fijo"][i][j]
+                        linea += "X" if celda is not None else "."
+                    archivo.write(linea + "\n")
+            
+            # Guardar info de la pieza actual
+            archivo.write(f"Pieza actual: {game_data['pieza_actual']}\n")
+            archivo.write(f"Rotación: {game_data['rotacion']}\n")
+            archivo.write(f"Posición X: {game_data['x']}\n")
+            archivo.write(f"Posición Y: {game_data['y']}\n")
+            archivo.write(f"Siguiente pieza: {game_data['pieza_siguiente']}\n")
+        
+        # Registrar partida en el índice
+        registrar_partida_en_indice(
+            game_data["nombre_jugador"],
+            nombre_archivo,
+            game_data["puntos"]
+        )
+        
+        messagebox.showinfo("Guardar", "¡Partida guardada correctamente!")
+        
+        # Cerrar ventana de menú si existe
+        if ventana_menu:
+            ventana_menu.destroy()
+            
+        return True
+        
+    except Exception as e:
+        messagebox.showerror("Error", f"Error al guardar la partida: {str(e)}")
+        return False
+
+
+def registrar_partida_en_indice(nombre_jugador, nombre_archivo, puntos):
+    """Registra la partida guardada en el archivo índice"""
+    try:
+        # Crear el archivo de índice si no existe
+        archivo_indice = "Código/indiceJuego.txt"
+        # Abrir en modo append - no necesitamos leer el archivo
+        # así que no usamos seek
+        with open(archivo_indice, "a") as indice:
+            # Agregar entrada al índice
+            import time
+            fecha = time.strftime("%d/%m/%Y %H:%M:%S")
+            indice.write(f"{nombre_jugador}|{nombre_archivo}|{puntos}|{fecha}\n")
+            
+    except Exception as e:
+        print(f"Error al registrar partida en índice: {str(e)}")
+
+
+def salir_partida(game_data, ventana_menu):
+    """Cierra la partida actual y vuelve al menú principal"""
+    confirmacion = messagebox.askyesno("Salir", "¿Estás seguro que deseas salir?\nPerderás el progreso no guardado.")
+    if confirmacion:
+        # Preguntar si desea guardar antes de salir
+        guardar = messagebox.askyesno("Guardar y Salir", "¿Deseas guardar la partida antes de salir?")
+        if guardar:
+            guardado = guardar_partida(game_data)
+            if not guardado:
+                # Si hubo error al guardar, preguntar si aún quiere salir
+                continuar = messagebox.askyesno("Error", "Hubo un error al guardar. ¿Deseas salir de todas formas?")
+                if not continuar:
+                    return
+        
+        ventana_menu.destroy()
+        game_data["ventana_juego"].destroy()
+        game_data["boton_jugar"].config(state=tk.NORMAL)
+
+
+def mover_pieza(game_data, dx, dy):
+    """Mueve la pieza actual en el tablero si es posible"""
+    # Obtener datos actuales
+    x = game_data["x"]
+    y = game_data["y"]
+    rotacion = game_data["rotacion"]
+    pieza = TETRIMINOS[game_data["pieza_actual"]][rotacion]
+    tablero_fijo = game_data.get("tablero_fijo", None)
+    if tablero_fijo is None:
+        # Inicializar tablero fijo si no existe
+        filas = longitud(game_data["tablero"])
+        columnas = longitud(game_data["tablero"][0])
+        tablero_fijo = [[None for _ in range(columnas)] for _ in range(filas)]
+        game_data["tablero_fijo"] = tablero_fijo
+
+    # Calcular nueva posición
+    nuevo_x = x + dx
+    nuevo_y = y + dy
+
+    # Comprobar colisiones
+    if not hay_colision(tablero_fijo, pieza, nuevo_x, nuevo_y):
+        game_data["x"] = nuevo_x
+        game_data["y"] = nuevo_y
+        actualizar_tablero(game_data)
+    else:
+        # Si la colisión es hacia abajo, fijar la pieza
+        if dy == 1:
+            fijar_pieza(game_data)
+            # Generar nueva pieza
+            nueva_pieza(game_data)
+            actualizar_tablero(game_data)
+
+def hay_colision(tablero_fijo, pieza, x, y):
+    """Verifica si la pieza colisiona con el tablero fijo o los bordes"""
+    filas = longitud(tablero_fijo)
+    columnas = longitud(tablero_fijo[0])
+    for i in range(longitud(pieza)):
+        for j in range(longitud(pieza[i])):
+            if pieza[i][j]:
+                pos_y = y + i
+                pos_x = x + j
+                if pos_x < 0 or pos_x >= columnas or pos_y < 0 or pos_y >= filas:
+                    return True
+                if tablero_fijo[pos_y][pos_x] is not None:
+                    return True
+    return False
+
+def fijar_pieza(game_data):
+    """Fija la pieza actual en el tablero fijo"""
+    x = game_data["x"]
+    y = game_data["y"]
+    rotacion = game_data["rotacion"]
+    pieza = TETRIMINOS[game_data["pieza_actual"]][rotacion]
+    color = COLORES_TETRIMINOS[game_data["pieza_actual"]]
+    tablero_fijo = game_data["tablero_fijo"]
+    filas = longitud(tablero_fijo)
+    columnas = longitud(tablero_fijo[0])
+    for i in range(longitud(pieza)):
+        for j in range(longitud(pieza[i])):
+            if pieza[i][j]:
+                pos_y = y + i
+                pos_x = x + j
+                if 0 <= pos_y < filas and 0 <= pos_x < columnas:
+                    tablero_fijo[pos_y][pos_x] = color
+    limpiar_lineas(game_data)
+
+def limpiar_lineas(game_data):
+    """Elimina líneas completas y actualiza la puntuación"""
+    tablero_fijo = game_data["tablero_fijo"]
+    filas = longitud(tablero_fijo)
+    columnas = longitud(tablero_fijo[0])
+    nuevas_filas = []
+    lineas_eliminadas = 0
+    for fila in tablero_fijo:
+        if all(celda is not None for celda in fila):
+            lineas_eliminadas += 1
+        else:
+            nuevas_filas.append(fila)
+    for _ in range(lineas_eliminadas):
+        nuevas_filas.insert(0, [None for _ in range(columnas)])
+    game_data["tablero_fijo"] = nuevas_filas
+    if lineas_eliminadas > 0:
+        game_data["puntos"] += lineas_eliminadas * 100
         game_data["label_puntos"].config(text=f"PUNTOS: {game_data['puntos']}")
-    
-    # Generar una nueva piezago, ventana_menu):
-    pieza_actual, pieza_siguiente = game_data["pieza_siguiente"], iniciar_nuevas_piezas()[0]
-    game_data["pieza_actual"] = pieza_actualr", "¿Estás seguro que deseas salir?\nPerderás el progreso no guardado.")
-    game_data["pieza_siguiente"] = pieza_siguiente
-    game_data["rotacion"] = 0)
-    game_data["x"] = 5destroy()
-    game_data["y"] = 0uardado_Nuevo():
-    with open("Código/guardado.txt", "x") as archivo:
-    # Mostrar la siguiente piezainicial\n")
-    mostrar_siguiente_pieza(game_data["frame_siguiente"], pieza_siguiente)
-    
-    # Verificar si es game over (si no hay espacio para la nueva pieza)
-    if not es_movimiento_valido(game_data):        game_data["juego_activo"] = False        messagebox.showinfo("Game Over", f"¡Juego terminado!\nPuntuación final: {game_data['puntos']}")        # Actualizar el tablero    actualizar_tablero(game_data)def mostrar_menu_pausa(ventana_juego):    """Muestra un menú de pausa con opciones para continuar, guardar o salir"""    # Crear ventana modal para el menú de pausa    menu_pausa = tk.Toplevel(ventana_juego)    menu_pausa.title("PAUSA")    menu_pausa.geometry("300x350")    menu_pausa.resizable(False, False)    menu_pausa.config(bg="#1a1a2e")    menu_pausa.transient(ventana_juego)  # Hace que sea una ventana hija    menu_pausa.grab_set()  # Modal - bloquea interacción con ventana padre        # Centrar en la pantalla    posicionar_ventana(menu_pausa, 300, 350)        # Título del menú    label_pausa = tk.Label(        menu_pausa,        text="PAUSA",        bg="#1a1a2e",        fg="white",        font=("Press Start 2P", 18, "bold")    )    label_pausa.pack(pady=20)        # Botón continuar    boton_continuar = tk.Button(        menu_pausa,        text="CONTINUAR",        bg="#4ecca3", fg="#1a1a2e",        font=FUENTE_RETRO,        width=12, height=2,        command=menu_pausa.destroy,  # Simplemente cierra el menú para continuar        relief=tk.GROOVE    )    boton_continuar.pack(pady=15)    boton_continuar.bind("<Enter>", lambda e: boton_continuar.config(bg="#6be0bc"))    boton_continuar.bind("<Leave>", lambda e: boton_continuar.config(bg="#4ecca3"))        # Botón guardar partida    boton_guardar = tk.Button(        menu_pausa,        text="GUARDAR",        bg="#ffd369", fg="#1a2e",        font=FUENTE_RETRO,        width=12, height=2,        command=lambda: guardar_partida(menu_pausa),        relief=tk.GROOVE    )    boton_guardar.pack(pady=15)    boton_guardar.bind("<Enter>", lambda e: boton_guardar.config(bg="#ffe085"))    boton_guardar.bind("<Leave>", lambda e: boton_guardar.config(bg="#ffd369"))        # Botón salir    boton_salir = tk.Button(        menu_pausa,        text="SALIR",        bg="#e84545", fg="white",        font=FUENTE_RETRO,        width=12, height=2,        command=lambda: salir_partida(ventana_juego, menu_pausa),        relief=tk.GROOVE    )    boton_salir.pack(pady=15)    boton_salir.bind("<Enter>", lambda e: boton_salir.config(bg="#ff6b6b"))    boton_salir.bind("<Leave>", lambda e: boton_salir.config(bg="#e84545"))def posicionar_ventana(ventana, ancho, alto):    """Centra una ventana en la pantalla"""    # Obtener dimensiones de la pantalla    ancho_pantalla = ventana.winfo_screenwidth()    alto_pantalla = ventana.winfo_screenheight()        # Calcular posición x,y para la ventana    x = (ancho_pantalla / 2) - (ancho / 2)    y = (alto_pantalla / 2) - (alto / 2)        # Establecer geometría    ventana.geometry(f"{ancho}x{alto}+{int(x)}+{int(y)}")def guardar_partida(ventana_menu):    """Guarda el estado actual de la partida"""    # Aquí implementarías la lógica para guardar    messagebox.showinfo("Guardar", "¡Partida guardada correctamente!")    ventana_menu.destroy()def salir_partida(ventana_juego, ventana_menu):    """Cierra la partida actual y vuelve al menú principal"""    confirmacion = messagebox.askyesno("Salir", "¿Estás seguro que deseas salir?\nPerderás el progreso no guardado.")    if confirmacion:        ventana_menu.destroy()        ventana_juego.destroy()def crear_Archivo_de_Guardado_Nuevo():    with open("Código/guardado.txt", "x") as archivo:        archivo.write("Guardado inicial\n")if __name__ == "__main__":    iniciar_juego()
+
+def nueva_pieza(game_data):
+    """Genera una nueva pieza y verifica si hay espacio para colocarla"""
+    game_data["pieza_actual"] = game_data["pieza_siguiente"]
+    game_data["pieza_siguiente"] = random.choice(list(TETRIMINOS.keys()))
+    game_data["rotacion"] = 0
+    game_data["x"] = 5
+    game_data["y"] = 0
+    mostrar_siguiente_pieza(game_data["frame_siguiente"], game_data["pieza_siguiente"])
+    # Verificar si la nueva pieza colisiona al aparecer (game over)
+    pieza = TETRIMINOS[game_data["pieza_actual"]][0]
+    if hay_colision(game_data["tablero_fijo"], pieza, game_data["x"], game_data["y"]):
+        game_data["juego_activo"] = False
+        messagebox.showinfo("Fin del juego", "¡Juego terminado!")
+        game_data["ventana_juego"].destroy()
+        game_data["boton_jugar"].config(state=tk.NORMAL)
+
+def rotar_pieza(game_data):
+    """Rota la pieza actual si es posible"""
+    rotacion_actual = game_data["rotacion"]
+    pieza_tipo = game_data["pieza_actual"]
+    num_rotaciones = longitud(TETRIMINOS[pieza_tipo])
+    nueva_rotacion = (rotacion_actual + 1) % num_rotaciones
+    pieza = TETRIMINOS[pieza_tipo][nueva_rotacion]
+    x = game_data["x"]
+    y = game_data["y"]
+    tablero_fijo = game_data["tablero_fijo"]
+    if not hay_colision(tablero_fijo, pieza, x, y):
+        game_data["rotacion"] = nueva_rotacion
+        actualizar_tablero(game_data)
+
+def caida_automatica(ventana_juego, game_data):
+    """Función para la caída automática de las piezas"""
+    if game_data["juego_activo"] and not game_data.get("juego_pausado", False):
+        # Mover la pieza hacia abajo
+        mover_pieza(game_data, 0, 1)
+        # Programar la próxima caída
+        ventana_juego.after(1000, lambda: caida_automatica(ventana_juego, game_data))
+
+
+if __name__ == "__main__":
+    iniciar_juego()
