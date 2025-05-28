@@ -120,11 +120,12 @@ def ventana_estadisticas():
 
 
 def interpretar_matriz():
-    """Lee la matriz desde un archivo de texto"""
+    """Lee la matriz desde un archivo de texto y marca obstáculos como+'"""
     try:
         # Intentar abrir el archivo (probando diferentes nombres)
         archivo_encontrado = False
         matriz = []
+        hay_obstaculos = False
         
         for nombre_archivo in ["matriz", "Matriz", "matriz.txt", "Matriz.txt"]:
             try:
@@ -133,6 +134,8 @@ def interpretar_matriz():
                 with open(ruta_completa, "r") as archivo:
                     lineas = archivo.readlines()
                     archivo_encontrado = True
+                    print(f"Archivo encontrado: {ruta_completa}")
+                    print(f"Contenido leído: {lineas}")
                     break
             except FileNotFoundError:
                 continue
@@ -152,9 +155,33 @@ def interpretar_matriz():
             elementos = linea.split(",")
             fila = []
             for elemento in elementos:
-                fila = agregar(fila, elemento.strip())
+                elemento_limpio = elemento.strip()
+                
+                # Detectar obstáculos (cualquier carácter que no sea espacio o punto)
+                if elemento_limpio and elemento_limpio not in [" ", ".", ""]:
+                    hay_obstaculos = True
+                    print(f"Obstáculo detectado: '{elemento_limpio}'")
+                    
+                fila = agregar(fila, elemento_limpio)
             matriz = agregar(matriz, fila)
 
+        print(f"Matriz cargada, dimensiones: {longitud(matriz)}x{longitud(matriz[0]) if matriz else 0}")
+        print(f"¿Hay obstáculos detectados? {hay_obstaculos}")
+        
+        # Si detectamos obstáculos, colocamos un "+" en el medio de la matriz
+        if hay_obstaculos and matriz and longitud(matriz) > 0:
+            filas = longitud(matriz)
+            columnas = longitud(matriz[0]) if filas > 0 else 0
+            
+            # Calcular el centro de la matriz
+            centro_fila = filas // 2
+            centro_columna = columnas // 2
+            
+            # Colocar un "+" en el centro
+            if filas > 0 and columnas > 0:
+                print(f"¡Obstáculo detectado! Colocando '+' en posición [{centro_fila},{centro_columna}]")
+                matriz[centro_fila][centro_columna] = "+"
+                
         return matriz
         
     except Exception as e:
@@ -407,37 +434,65 @@ def mostrar_siguiente_pieza(frame_siguiente, tipo_pieza):
 
 def actualizar_tablero(game_data):
     """Actualiza la visualización del tablero con la pieza actual"""
-    # Limpiar solo las celdas que no están fijas
-    tablero = game_data["tablero"]
-    tablero_fijo = game_data.get("tablero_fijo", [])
-    
-    # Primero pintar el fondo en todas las celdas
-    for i in range(longitud(tablero)):
-        for j in range(longitud(tablero[0])):
-            # Si la celda no está fijada, pintarla de fondo
-            if tablero_fijo is None or i >= longitud(tablero_fijo) or j >= longitud(tablero_fijo[i]) or tablero_fijo[i][j] is None:
-                tablero[i][j].config(bg="#1a2a6d")
-    
-    # Mostrar piezas fijas
-    if tablero_fijo:
-        for i in range(longitud(tablero_fijo)):
-            for j in range(longitud(tablero_fijo[i])):
-                if tablero_fijo[i][j] is not None:
-                    tablero[i][j].config(bg=tablero_fijo[i][j])
-    
-    # Mostrar la pieza actual
-    pieza = TETRIMINOS[game_data["pieza_actual"]][game_data["rotacion"]]
-    color = COLORES_TETRIMINOS[game_data["pieza_actual"]]
-    
-    for i in range(longitud(pieza)):
-        for j in range(longitud(pieza[i])):
-            if pieza[i][j] == 1:
-                y = game_data["y"] + i
-                x = game_data["x"] + j
-                
-                # Verificar que está dentro de los límites
-                if 0 <= y < longitud(tablero) and 0 <= x < longitud(tablero[0]):
-                    tablero[y][x].config(bg=color)
+    try:
+        # Verificar si el juego sigue activo
+        if not game_data.get("juego_activo", True):
+            return
+            
+        # Limpiar solo las celdas que no están fijas
+        tablero = game_data["tablero"]
+        tablero_fijo = game_data.get("tablero_fijo", [])
+        
+        # Primero pintar el fondo en todas las celdas
+        for i in range(longitud(tablero)):
+            for j in range(longitud(tablero[0])):
+
+                # Verificar si el widget todavía existe
+                try:
+                    if tablero[i][j].winfo_exists():
+                        # Si la celda no está fijada, pintarla de fondo
+                        if tablero_fijo is None or i >= longitud(tablero_fijo) or j >= longitud(tablero_fijo[i]) or tablero_fijo[i][j] is None:
+                            tablero[i][j].config(bg="#1a2a6d")
+                except:
+                    # Si hay error, puede que el widget ya no exista
+                    pass
+        
+        # Mostrar piezas fijas
+        if tablero_fijo:
+            for i in range(longitud(tablero_fijo)):
+                for j in range(longitud(tablero_fijo[i])):
+                    if tablero_fijo[i][j] is not None:
+                        try:
+                            if tablero[i][j].winfo_exists():
+                                tablero[i][j].config(bg=tablero_fijo[i][j])
+                        except:
+                            pass
+        
+        # Mostrar la pieza actual
+        pieza = TETRIMINOS[game_data["pieza_actual"]][game_data["rotacion"]]
+        color = COLORES_TETRIMINOS[game_data["pieza_actual"]]
+        
+        for i in range(longitud(pieza)):
+            for j in range(longitud(pieza[i])):
+                if pieza[i][j] == 1:
+                    y = game_data["y"] + i
+                    x = game_data["x"] + j
+                    
+                    # Verificar que está dentro de los límites
+                    if 0 <= y < longitud(tablero) and 0 <= x < longitud(tablero[0]):
+                        try:
+                            if tablero[y][x].winfo_exists():
+                                tablero[y][x].config(bg=color)
+                        except:
+                            pass
+        
+        # Imprimir el tablero en la consola después de actualizarlo
+        imprimir_tablero_en_consola(game_data)
+        
+    except Exception as e:
+        print(f"Error en actualizar_tablero: {e}")
+        # Si hay un error general, es posible que el juego ya no esté activo
+        game_data["juego_activo"] = False
 
 
 def jugar(ventana, boton_jugar):
@@ -522,7 +577,7 @@ def jugar(ventana, boton_jugar):
     boton_pausa = tk.Button(
         frame_info,
         text="PAUSA",
-        bg="#ffd369", fg="#1a1a2e",
+        bg="#ffd369", fg="#1a2a2e",
         font=FUENTE_RETRO,
         width=10, height=2,
         command=lambda: mostrar_menu_pausa(ventana_juego, game_data),
@@ -627,7 +682,7 @@ def pedir_nombre_jugador():
     boton = tk.Button(
         ventana_nombre,
         text="COMENZAR",
-        bg="#4ecca3", fg="#1a1a2e",
+        bg="#4ecca3", fg="#1a2e2e",
         font=FUENTE_RETRO,
         command=confirmar,
         relief=tk.GROOVE
@@ -784,8 +839,6 @@ def registrar_partida_en_indice(nombre_jugador, nombre_archivo, puntos):
     try:
         # Crear el archivo de índice si no existe
         archivo_indice = "Código/indiceJuego.txt"
-        # Abrir en modo append - no necesitamos leer el archivo
-        # así que no usamos seek
         with open(archivo_indice, "a") as indice:
             # Agregar entrada al índice
             import time
@@ -932,12 +985,68 @@ def rotar_pieza(game_data):
 
 def caida_automatica(ventana_juego, game_data):
     """Función para la caída automática de las piezas"""
-    if game_data["juego_activo"] and not game_data.get("juego_pausado", False):
-        # Mover la pieza hacia abajo
-        mover_pieza(game_data, 0, 1)
-        # Programar la próxima caída
-        ventana_juego.after(1000, lambda: caida_automatica(ventana_juego, game_data))
+    # Verificar si el juego todavía está activo y la ventana existe
+    try:
+        if ventana_juego.winfo_exists() and game_data["juego_activo"] and not game_data.get("juego_pausado", False):
+            # Mover la pieza hacia abajo
+            mover_pieza(game_data, 0, 1)
+            # Programar la próxima caída
+            ventana_juego.after(1000, lambda: caida_automatica(ventana_juego, game_data))
+    except:
+        # Si hay error al verificar la ventana, probablemente ya no existe
+        game_data["juego_activo"] = False
 
+
+def imprimir_tablero_en_consola(game_data):
+    """Imprime el estado actual del tablero en la consola de manera ordenada y visual"""
+    print("\n" + "="*30)
+    print(f"Jugador: {game_data['nombre_jugador']} | Puntos: {game_data['puntos']}")
+    print("="*30)
+    
+    # Crear una representación temporal del tablero actual
+    tablero_fijo = game_data.get("tablero_fijo", [])
+    if not tablero_fijo:
+        return  # Si no hay tablero, no hay nada que mostrar
+    
+    filas = longitud(tablero_fijo)
+    columnas = longitud(tablero_fijo[0])
+    
+    # Crear una copia del tablero fijo para visualización
+    tablero_visual = []
+    for i in range(filas):
+        fila = []
+        for j in range(columnas):
+            if tablero_fijo[i][j] is not None:
+                fila = agregar(fila, "■")  # Bloque fijo
+            else:
+                fila = agregar(fila, "·")  # Espacio vacío
+        tablero_visual = agregar(tablero_visual, fila)
+    
+    # Agregar la pieza actual al tablero visual
+    pieza = TETRIMINOS[game_data["pieza_actual"]][game_data["rotacion"]]
+    for i in range(longitud(pieza)):
+        for j in range(longitud(pieza[i])):
+            if pieza[i][j] == 1:
+                y = game_data["y"] + i
+                x = game_data["x"] + j
+                if 0 <= y < filas and 0 <= x < columnas:
+                    tablero_visual[y][x] = "□"  # Pieza en movimiento
+    
+    # Imprimir el borde superior
+    print("╔" + "══" * columnas + "╗")
+    
+    # Imprimir filas del tablero
+    for fila in tablero_visual:
+        linea = "║"
+        for celda in fila:
+            linea += celda + " "
+        linea += "║"
+        print(linea)
+    
+    # Imprimir el borde inferior
+    print("╚" + "══" * columnas + "╝")
+    print(f"Pieza actual: {game_data['pieza_actual']} | Siguiente: {game_data['pieza_siguiente']}")
+    print("="*30)
 
 if __name__ == "__main__":
     iniciar_juego()
