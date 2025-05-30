@@ -100,7 +100,10 @@ def ventana_estadisticas():
     ventana_estadisticas.geometry("600x700")
     ventana_estadisticas.config(bg="#1a1a2e")  # Color coherente con ventana principal
 
-    # Aquí puedes agregar widgets para mostrar estadísticas
+    # Centrar la ventana
+    posicionar_ventana(ventana_estadisticas, 600, 700)
+
+    # Título
     label_estadisticas = tk.Label(
         ventana_estadisticas,
         text="ESTADÍSTICAS DEL JUEGO",
@@ -109,16 +112,114 @@ def ventana_estadisticas():
     )
     label_estadisticas.pack(pady=20)
     
+    # Frame para el texto con scrollbar
+    frame_texto = tk.Frame(ventana_estadisticas, bg="#1a1a2e")
+    frame_texto.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
+    
+    # Scrollbar para el texto
+    scrollbar_texto = tk.Scrollbar(frame_texto)
+    scrollbar_texto.pack(side=tk.RIGHT, fill=tk.Y)
+    
+    # Texto de estadísticas
+    texto_estadisticas = tk.Text(
+        frame_texto,
+        bg="#1a1a2e", fg="white",
+        font=("Press Start 2P", 10),
+        width=50, height=25, 
+        wrap=tk.WORD,
+        yscrollcommand=scrollbar_texto.set
+    )
+    texto_estadisticas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    scrollbar_texto.config(command=texto_estadisticas.yview)
+    
+    # Cargar y mostrar estadísticas
+    try:
+        archivo_indice = "Código/indiceJuego.txt"
+        
+        if not os.path.exists(archivo_indice):
+            texto_estadisticas.insert(tk.END, "No hay partidas registradas aún.\n\n")
+            texto_estadisticas.insert(tk.END, "¡Juega algunas partidas para ver tus estadísticas!")
+        else:
+            # Leer el archivo de índice
+            with open(archivo_indice, "r") as archivo:
+                lineas = archivo.readlines()
+            
+            if not lineas:
+                texto_estadisticas.insert(tk.END, "No hay partidas registradas aún.\n\n")
+                texto_estadisticas.insert(tk.END, "¡Juega algunas partidas para ver tus estadísticas!")
+            else:
+                texto_estadisticas.insert(tk.END, "HISTORIAL DE PARTIDAS\n")
+                texto_estadisticas.insert(tk.END, "(En orden cronológico)\n")
+                texto_estadisticas.insert(tk.END, "="*50 + "\n\n")
+                
+                contador = 1
+                
+                # Procesar cada línea del índice
+                for linea in lineas:
+                    linea = linea.strip()
+                    if linea:  # Ignorar líneas vacías
+                        try:
+                            # Formato: nombre_jugador|nombre_archivo|puntos|fecha
+                            partes = linea.split("|")
+                            if longitud(partes) >= 4:
+                                nombre_jugador = partes[0]
+                                puntos = partes[2]
+                                fecha = partes[3]
+                                
+                                # Agregar al texto
+                                texto_estadisticas.insert(tk.END, f"{contador}. {nombre_jugador}\n")
+                                texto_estadisticas.insert(tk.END, f"   Puntos: {puntos}\n")
+                                texto_estadisticas.insert(tk.END, f"   Fecha: {fecha}\n")
+                                texto_estadisticas.insert(tk.END, "-" * 30 + "\n\n")
+                                
+                                contador += 1
+                        except Exception as e:
+                            print(f"Error al procesar línea: {linea}, Error: {e}")
+                            continue
+                
+                # Agregar resumen al final
+                texto_estadisticas.insert(tk.END, "\n" + "="*50 + "\n")
+                texto_estadisticas.insert(tk.END, f"TOTAL DE PARTIDAS: {contador - 1}\n")
+                
+                # Calcular puntuación más alta
+                puntuacion_maxima = 0
+                jugador_mejor = ""
+                
+                # Volver a leer para encontrar la mejor puntuación
+                for linea in lineas:
+                    linea = linea.strip()
+                    if linea:
+                        try:
+                            partes = linea.split("|")
+                            if longitud(partes) >= 4:
+                                puntos_actual = int(partes[2])
+                                if puntos_actual > puntuacion_maxima:
+                                    puntuacion_maxima = puntos_actual
+                                    jugador_mejor = partes[0]
+                        except:
+                            continue
+                
+                if jugador_mejor:
+                    texto_estadisticas.insert(tk.END, f"MEJOR PUNTUACIÓN: {puntuacion_maxima} pts\n")
+                    texto_estadisticas.insert(tk.END, f"CONSEGUIDA POR: {jugador_mejor}\n")
+    
+    except Exception as e:
+        texto_estadisticas.insert(tk.END, f"Error al cargar estadísticas: {str(e)}")
+    
+    # Deshabilitar edición del texto
+    texto_estadisticas.config(state=tk.DISABLED)
+    
     # Botón para cerrar la ventana de estadísticas
     boton_cerrar = tk.Button(
         ventana_estadisticas,
         text="CERRAR",
         bg="#e84545", fg="white",
-        font=FUENTE_RETRO,   # ← y aquí
+        font=FUENTE_RETRO,
+        width=12, height=2,
         command=ventana_estadisticas.destroy,
         relief=tk.GROOVE
     )
-    boton_cerrar.pack(pady=20, side=tk.BOTTOM)
+    boton_cerrar.pack(pady=20)
     boton_cerrar.bind("<Enter>", lambda e: boton_cerrar.config(bg="#ff6b6b"))
     boton_cerrar.bind("<Leave>", lambda e: boton_cerrar.config(bg="#e84545"))
     #Texto de estadísticas
@@ -529,11 +630,11 @@ def jugar(ventana, boton_jugar):
     
     # Crear layout dividido en dos secciones
     # Frame para la matriz de juego (izquierda)
-    frame_matriz = tk.Frame(ventana_juego, bg="#1a1a2e", bd=4, relief=tk.GROOVE)
+    frame_matriz = tk.Frame(ventana_juego, bg="#1a2a2e", bd=4, relief=tk.GROOVE)
     frame_matriz.pack(side=tk.LEFT, padx=20, pady=20, fill=tk.BOTH, expand=True)
 
     # Frame para información del juego (derecha)
-    frame_info = tk.Frame(ventana_juego, bg="#1a1a2e", bd=4, relief=tk.GROOVE, width=300)
+    frame_info = tk.Frame(ventana_juego, bg="#1a2a2e", bd=4, relief=tk.GROOVE, width=300)
     frame_info.pack(side=tk.RIGHT, padx=20, pady=20, fill=tk.BOTH)
     
     # Título para el panel de información
@@ -591,7 +692,7 @@ def jugar(ventana, boton_jugar):
     boton_pausa = tk.Button(
         frame_info,
         text="PAUSA",
-        bg="#ffd369", fg="#1a2a2e",
+        bg="#ffd369", fg="#1a2e2e",
         font=FUENTE_RETRO,
         width=10, height=2,
         command=lambda: mostrar_menu_pausa(ventana_juego, game_data),
@@ -757,7 +858,7 @@ def mostrar_menu_pausa(ventana_juego, game_data):
     boton_guardar = tk.Button(
         menu_pausa,
         text="GUARDAR",
-        bg="#ffd369", fg="#1a2a2e",
+        bg="#ffd369", fg="#1a2e2e",
         font=FUENTE_RETRO,
         width=12, height=2,
         command=lambda: guardar_partida(game_data, menu_pausa),
