@@ -39,7 +39,7 @@ def iniciar_juego():
     boton_jugar = tk.Button(
         ventana,
         text="JUGAR",
-        bg="#4ecca3", fg="#1a1a2e",
+        bg="#4ecca3", fg="#1a2e2e",
         font=FUENTE_RETRO,
         width=10, height=2,
         command=lambda: jugar(ventana, boton_jugar),
@@ -48,6 +48,20 @@ def iniciar_juego():
     boton_jugar.pack(pady=20)
     boton_jugar.bind("<Enter>", lambda e: boton_jugar.config(bg="#6be0bc"))
     boton_jugar.bind("<Leave>", lambda e: boton_jugar.config(bg="#4ecca3"))
+    
+    # Botón para cargar partida
+    boton_cargar = tk.Button(
+        ventana,
+        text="CARGAR",
+        bg="#9b59b6", fg="white",
+        font=FUENTE_RETRO,
+        width=10, height=2,
+        command=lambda: mostrar_partidas_guardadas(ventana, boton_jugar),
+        relief=tk.GROOVE
+    )
+    boton_cargar.pack(pady=20)
+    boton_cargar.bind("<Enter>", lambda e: boton_cargar.config(bg="#a569c7"))
+    boton_cargar.bind("<Leave>", lambda e: boton_cargar.config(bg="#9b59b6"))
     
     # Botón para salir
     boton_salir = tk.Button(
@@ -1047,6 +1061,296 @@ def imprimir_tablero_en_consola(game_data):
     print("╚" + "══" * columnas + "╝")
     print(f"Pieza actual: {game_data['pieza_actual']} | Siguiente: {game_data['pieza_siguiente']}")
     print("="*30)
+
+def mostrar_partidas_guardadas(ventana_principal, boton_jugar):
+    """Muestra una ventana con las partidas guardadas disponibles"""
+    try:
+        directorio_guardados = "Código/partidas_guardadas"
+        if not os.path.exists(directorio_guardados):
+            messagebox.showinfo("Sin partidas", "No hay partidas guardadas disponibles.")
+            return
+        
+        # Obtener lista de archivos de partidas
+        archivos = [f for f in os.listdir(directorio_guardados) if f.endswith('.txt')]
+        
+        if not archivos:
+            messagebox.showinfo("Sin partidas", "No hay partidas guardadas disponibles.")
+            return
+        
+        # Crear ventana para mostrar partidas
+        ventana_cargar = tk.Toplevel(ventana_principal)
+        ventana_cargar.title("Cargar Partida")
+        ventana_cargar.geometry("600x500")
+        ventana_cargar.config(bg="#1a1a2e")
+        ventana_cargar.resizable(False, False)
+        ventana_cargar.transient(ventana_principal)
+        
+        # Centrar ventana
+        posicionar_ventana(ventana_cargar, 600, 500)
+        
+        # Título
+        label_titulo = tk.Label(
+            ventana_cargar,
+            text="PARTIDAS GUARDADAS",
+            bg="#1a1a2e", fg="white",
+            font=FUENTE_RETRO
+        )
+        label_titulo.pack(pady=20)
+        
+        # Frame para la lista de partidas
+        frame_lista = tk.Frame(ventana_cargar, bg="#1a1a2e")
+        frame_lista.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
+        
+        # Scrollbar para la lista
+        scrollbar = tk.Scrollbar(frame_lista)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Listbox para mostrar partidas
+        listbox_partidas = tk.Listbox(
+            frame_lista,
+            bg="#2c3e50", fg="white",
+            font=("Press Start 2P", 10),
+            selectmode=tk.SINGLE,
+            yscrollcommand=scrollbar.set
+        )
+        listbox_partidas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=listbox_partidas.yview)
+        
+        # Cargar información de partidas
+        partidas_info = []
+        for archivo in archivos:
+            info = leer_info_partida(f"{directorio_guardados}/{archivo}")
+            if info:
+                partidas_info.append((archivo, info))
+                # Mostrar formato: "Jugador - Puntos - Fecha"
+                listbox_partidas.insert(tk.END, f"{info['jugador']} - {info['puntos']} pts - {info['fecha']}")
+        
+        # Frame para botones
+        frame_botones = tk.Frame(ventana_cargar, bg="#1a1a2e")
+        frame_botones.pack(pady=20)
+        
+        # Botón cargar
+        def cargar_partida_seleccionada():
+            seleccion = listbox_partidas.curselection()
+            if seleccion:
+                archivo_seleccionado = partidas_info[seleccion[0]][0]
+                ruta_archivo = f"{directorio_guardados}/{archivo_seleccionado}"
+                cargar_partida(ruta_archivo, ventana_principal, boton_jugar)
+                ventana_cargar.destroy()
+            else:
+                messagebox.showwarning("Selección", "Por favor selecciona una partida para cargar.")
+        
+        boton_cargar_partida = tk.Button(
+            frame_botones,
+            text="CARGAR",
+            bg="#4ecca3", fg="#1a2e2e",
+            font=FUENTE_RETRO,
+            width=10, height=2,
+            command=cargar_partida_seleccionada,
+            relief=tk.GROOVE
+        )
+        boton_cargar_partida.pack(side=tk.LEFT, padx=10)
+        boton_cargar_partida.bind("<Enter>", lambda e: boton_cargar_partida.config(bg="#6be0bc"))
+        boton_cargar_partida.bind("<Leave>", lambda e: boton_cargar_partida.config(bg="#4ecca3"))
+        
+        # Botón eliminar
+        def eliminar_partida_seleccionada():
+            seleccion = listbox_partidas.curselection()
+            if seleccion:
+                archivo_seleccionado = partidas_info[seleccion[0]][0]
+                confirmacion = messagebox.askyesno("Eliminar", "¿Estás seguro de eliminar esta partida?")
+                if confirmacion:
+                    try:
+                        os.remove(f"{directorio_guardados}/{archivo_seleccionado}")
+                        listbox_partidas.delete(seleccion[0])
+                        partidas_info.pop(seleccion[0])
+                        messagebox.showinfo("Eliminado", "Partida eliminada correctamente.")
+                    except Exception as e:
+                        messagebox.showerror("Error", f"Error al eliminar: {str(e)}")
+            else:
+                messagebox.showwarning("Selección", "Por favor selecciona una partida para eliminar.")
+        
+        boton_eliminar = tk.Button(
+            frame_botones,
+            text="ELIMINAR",
+            bg="#e84545", fg="white",
+            font=FUENTE_RETRO,
+            width=10, height=2,
+            command=eliminar_partida_seleccionada,
+            relief=tk.GROOVE
+        )
+        boton_eliminar.pack(side=tk.LEFT, padx=10)
+        boton_eliminar.bind("<Enter>", lambda e: boton_eliminar.config(bg="#ff6b6b"))
+        boton_eliminar.bind("<Leave>", lambda e: boton_eliminar.config(bg="#e84545"))
+        
+        # Botón cerrar
+        boton_cerrar = tk.Button(
+            frame_botones,
+            text="CERRAR",
+            bg="#ffd369", fg="#1a2a2e",
+            font=FUENTE_RETRO,
+            width=10, height=2,
+            command=ventana_cargar.destroy,
+            relief=tk.GROOVE
+        )
+        boton_cerrar.pack(side=tk.LEFT, padx=10)
+        boton_cerrar.bind("<Enter>", lambda e: boton_cerrar.config(bg="#ffe085"))
+        boton_cerrar.bind("<Leave>", lambda e: boton_cerrar.config(bg="#ffd369"))
+        
+    except Exception as e:
+        messagebox.showerror("Error", f"Error al mostrar partidas: {str(e)}")
+
+
+def leer_info_partida(ruta_archivo):
+    """Lee la información básica de una partida guardada"""
+    try:
+        with open(ruta_archivo, "r") as archivo:
+            lineas = archivo.readlines()
+            info = {}
+            for linea in lineas:
+                if linea.startswith("Jugador:"):
+                    info['jugador'] = linea.replace("Jugador:", "").strip()
+                elif linea.startswith("Puntos:"):
+                    info['puntos'] = linea.replace("Puntos:", "").strip()
+                elif linea.startswith("Fecha:"):
+                    info['fecha'] = linea.replace("Fecha:", "").strip()
+            return info
+    except Exception as e:
+        print(f"Error al leer archivo {ruta_archivo}: {e}")
+        return None
+
+
+def cargar_partida(ruta_archivo, ventana_principal, boton_jugar):
+    """Carga una partida desde archivo y reanuda el juego"""
+    try:
+        # Leer datos de la partida
+        datos_partida = {}
+        tablero_lineas = []
+        leyendo_tablero = False
+        
+        with open(ruta_archivo, "r") as archivo:
+            for linea in archivo:
+                linea = linea.strip()
+                if linea.startswith("Jugador:"):
+                    datos_partida['nombre_jugador'] = linea.replace("Jugador:", "").strip()
+                elif linea.startswith("Puntos:"):
+                    datos_partida['puntos'] = int(linea.replace("Puntos:", "").strip())
+                elif linea.startswith("Estado del tablero:"):
+                    leyendo_tablero = True
+                elif linea.startswith("Pieza actual:"):
+                    leyendo_tablero = False
+                    datos_partida['pieza_actual'] = linea.replace("Pieza actual:", "").strip()
+                elif linea.startswith("Rotación:"):
+                    datos_partida['rotacion'] = int(linea.replace("Rotación:", "").strip())
+                elif linea.startswith("Posición X:"):
+                    datos_partida['x'] = int(linea.replace("Posición X:", "").strip())
+                elif linea.startswith("Posición Y:"):
+                    datos_partida['y'] = int(linea.replace("Posición Y:", "").strip())
+                elif linea.startswith("Siguiente pieza:"):
+                    datos_partida['pieza_siguiente'] = linea.replace("Siguiente pieza:", "").strip()
+                elif leyendo_tablero and linea:
+                    tablero_lineas.append(linea)
+        
+        # Iniciar juego con datos cargados
+        iniciar_juego_cargado(datos_partida, tablero_lineas, ventana_principal, boton_jugar)
+        
+    except Exception as e:
+        messagebox.showerror("Error", f"Error al cargar partida: {str(e)}")
+
+
+def iniciar_juego_cargado(datos_partida, tablero_lineas, ventana_principal, boton_jugar):
+    """Inicia el juego con una partida cargada"""
+    print("Cargando partida guardada...")
+    messagebox.showinfo("Cargar", f"¡Partida de {datos_partida['nombre_jugador']} cargada!")
+    boton_jugar.config(state=tk.DISABLED)
+    
+    # Crear ventana de juego (similar a la función jugar())
+    ventana_juego = tk.Toplevel()
+    ventana_juego.title("Tetris - Partida Cargada")
+    ventana_juego.geometry("800x700")
+    ventana_juego.resizable(False, False)
+    ventana_juego.config(bg="#1a1a2e")
+    
+    # Crear layout dividido en dos secciones
+    # Frame para la matriz de juego (izquierda)
+    frame_matriz = tk.Frame(ventana_juego, bg="#1a2a2e", bd=4, relief=tk.GROOVE)
+    frame_matriz.pack(side=tk.LEFT, padx=20, pady=20, fill=tk.BOTH, expand=True)
+
+    # Frame para información del juego (derecha)
+    frame_info = tk.Frame(ventana_juego, bg="#1a2a2e", bd=4, relief=tk.GROOVE, width=300)
+    frame_info.pack(side=tk.RIGHT, padx=20, pady=20, fill=tk.BOTH)
+    
+    # Crear elementos de la interfaz
+    label_info = tk.Label(frame_info, text="INFORMACIÓN", bg="#1a2a2e", fg="white", font=FUENTE_RETRO)
+    label_info.pack(pady=10)
+    
+    label_jugador = tk.Label(frame_info, text=f"JUGADOR: {datos_partida['nombre_jugador']}", bg="#1a2a2e", fg="white", font=FUENTE_RETRO)
+    label_jugador.pack(pady=10)
+    
+    label_siguiente = tk.Label(frame_info, text="SIGUIENTE PIEZA", bg="#1a2a2e", fg="white", font=FUENTE_RETRO)
+    label_siguiente.pack(pady=20)
+    
+    frame_siguiente = tk.Frame(frame_info, bg="#1a2a2e", bd=2, relief=tk.SUNKEN, width=150, height=150)
+    frame_siguiente.pack(pady=10)
+    
+    label_puntos = tk.Label(frame_info, text=f"PUNTOS: {datos_partida['puntos']}", bg="#1a2a2e", fg="white", font=FUENTE_RETRO)
+    label_puntos.pack(pady=20)
+    
+    # Inicializar tablero
+    tablero = inicializar_tablero(frame_matriz)
+    
+    # Recrear tablero fijo desde los datos guardados
+    tablero_fijo = [[None for _ in range(10)] for _ in range(20)]
+    for i, linea in enumerate(tablero_lineas):
+        if i < 20:  # Asegurar que no exceda las filas del tablero
+            for j, char in enumerate(linea):
+                if j < 10 and char == 'X':  # Asegurar que no exceda las columnas
+                    tablero_fijo[i][j] = "#808080"  # Color gris para piezas fijas
+    
+    # Mostrar siguiente pieza
+    mostrar_siguiente_pieza(frame_siguiente, datos_partida['pieza_siguiente'])
+    
+    # Variables de control del juego con datos cargados
+    game_data = {
+        "tablero": tablero,
+        "tablero_fijo": tablero_fijo,
+        "pieza_actual": datos_partida['pieza_actual'],
+        "rotacion": datos_partida['rotacion'],
+        "x": datos_partida['x'],
+        "y": datos_partida['y'],
+        "pieza_siguiente": datos_partida['pieza_siguiente'],
+        "frame_siguiente": frame_siguiente,
+        "puntos": datos_partida['puntos'],
+        "label_puntos": label_puntos,
+        "juego_activo": True,
+        "ventana_juego": ventana_juego,
+        "boton_jugar": boton_jugar,
+        "nombre_jugador": datos_partida['nombre_jugador']
+    }
+    
+    # Botón de pausa
+    boton_pausa = tk.Button(
+        frame_info, text="PAUSA", bg="#ffd369", fg="#1a2a2e", font=FUENTE_RETRO,
+        width=10, height=2, command=lambda: mostrar_menu_pausa(ventana_juego, game_data), relief=tk.GROOVE
+    )
+    boton_pausa.pack(pady=20)
+    boton_pausa.bind("<Enter>", lambda e: boton_pausa.config(bg="#ffe085"))
+    boton_pausa.bind("<Leave>", lambda e: boton_pausa.config(bg="#ffd369"))
+    
+    # Actualizar visualización
+    actualizar_tablero(game_data)
+    
+    # Configurar eventos de teclado
+    ventana_juego.bind("<Left>", lambda event: mover_pieza(game_data, -1, 0))
+    ventana_juego.bind("<Right>", lambda event: mover_pieza(game_data, 1, 0))
+    ventana_juego.bind("<Down>", lambda event: mover_pieza(game_data, 0, 1))
+    ventana_juego.bind("<space>", lambda event: rotar_pieza(game_data))
+    ventana_juego.bind("<p>", lambda event: mostrar_menu_pausa(ventana_juego, game_data))
+    ventana_juego.focus_set()
+    
+    # Iniciar bucle de caída automática
+    ventana_juego.after(1000, lambda: caida_automatica(ventana_juego, game_data))
+
 
 if __name__ == "__main__":
     iniciar_juego()
