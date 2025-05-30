@@ -1,0 +1,29 @@
+Jugador: David
+Puntos: 400
+Fecha: 30/05/2025 13:25:23
+Estado del tablero:
+.............
+.............
+.............
+.............
+.............
+.............
+......XXXXX..
+......X.X.XX.
+...X..XX..XXX
+X.XX.XXXXXXXX
+XXXXXXXXXXXX.
+........XXX..
+XX....XXXXX..
+XX....XX.XXXX
+XX...XXXXXX.X
+XX...XXXXXXXX
+XX.XXX.XXXXXX
+XX..XXXXXXXXX
+XXXXXXXXX..XX
+XXX...XXX..XX
+Pieza actual: T
+Rotación: 0
+Posición X: 5
+Posición Y: 2
+Siguiente pieza: U

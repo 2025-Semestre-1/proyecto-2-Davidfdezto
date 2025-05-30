@@ -16,7 +16,7 @@ def longitud(secuencia):
     return contador
 
 def agregar(lista, elemento):
-    """Función personalizada para reemplazar append()"""
+    """Función para reemplazar append"""
     return lista + [elemento]  # Crear una nueva lista con el elemento añadido
 
 def iniciar_juego():
@@ -235,14 +235,14 @@ def ventana_estadisticas():
 
 
 def interpretar_matriz():
-    """Lee la matriz desde un archivo de texto y marca obstáculos como+'"""
+    """Lee la matriz desde un archivo de texto y detecta obstáculos como '+'"""
     try:
         # Intentar abrir el archivo (probando diferentes nombres)
         archivo_encontrado = False
         matriz = []
         hay_obstaculos = False
         
-        for nombre_archivo in ["matriz", "Matriz", "matriz.txt", "Matriz.txt"]:
+        for nombre_archivo in ["matriz.txt", "Matriz.txt", "matriz", "Matriz"]:
             try:
                 ruta_completa = f"Código/{nombre_archivo}"
                 print(f"Intentando abrir: {ruta_completa}")
@@ -250,15 +250,19 @@ def interpretar_matriz():
                     lineas = archivo.readlines()
                     archivo_encontrado = True
                     print(f"Archivo encontrado: {ruta_completa}")
-                    print(f"Contenido leído: {lineas}")
                     break
             except FileNotFoundError:
                 continue
         
         if not archivo_encontrado:
-            print("No se encontró el archivo de matriz")
-            messagebox.showerror("Error", "No se encontró el archivo de matriz")
-            return None
+            print("No se encontró el archivo de matriz, creando matriz por defecto")
+            # Crear matriz por defecto 20x10 sin obstáculos internos
+            for i in range(20):
+                fila = []
+                for j in range(10):
+                    fila = agregar(fila, ".")  # Solo espacios libres
+                matriz = agregar(matriz, fila)
+            return matriz
             
         # Procesar cada línea del archivo
         for linea in lineas:
@@ -266,83 +270,130 @@ def interpretar_matriz():
             if not linea:  # Ignorar líneas vacías
                 continue
                 
-            # Separar por comas (o por el separador que uses)
-            elementos = linea.split(",")
+            # Si la línea contiene comas, separar por comas
+            if "," in linea:
+                elementos = linea.split(",")
+            else:
+                # Si no hay comas, tratar cada carácter como un elemento
+                elementos = list(linea)
+            
             fila = []
             for elemento in elementos:
                 elemento_limpio = elemento.strip()
                 
-                # Detectar obstáculos (cualquier carácter que no sea espacio o punto)
-                if elemento_limpio and elemento_limpio not in [" ", ".", ""]:
+                # Detectar obstáculos (el carácter "+")
+                if elemento_limpio == "+":
                     hay_obstaculos = True
                     print(f"Obstáculo detectado: '{elemento_limpio}'")
                     
                 fila = agregar(fila, elemento_limpio)
-            matriz = agregar(matriz, fila)
+            
+            if fila:  # Solo agregar filas no vacías
+                matriz = agregar(matriz, fila)
 
         print(f"Matriz cargada, dimensiones: {longitud(matriz)}x{longitud(matriz[0]) if matriz else 0}")
         print(f"¿Hay obstáculos detectados? {hay_obstaculos}")
         
-        # Si detectamos obstáculos, colocamos un "+" en el medio de la matriz
-        if hay_obstaculos and matriz and longitud(matriz) > 0:
-            filas = longitud(matriz)
-            columnas = longitud(matriz[0]) if filas > 0 else 0
-            
-            # Calcular el centro de la matriz
-            centro_fila = filas // 2
-            centro_columna = columnas // 2
-            
-            # Colocar un "+" en el centro
-            if filas > 0 and columnas > 0:
-                print(f"¡Obstáculo detectado! Colocando '+' en posición [{centro_fila},{centro_columna}]")
-                matriz[centro_fila][centro_columna] = "+"
-                
         return matriz
         
     except Exception as e:
         print(f"Error al leer la matriz desde archivo: {e}")
-        messagebox.showerror("Error", f"Error al leer la matriz: {e}")
-        return None
+        # Retornar matriz por defecto en caso de error
+        matriz = []
+        for i in range(20):
+            fila = []
+            for j in range(10):
+                fila = agregar(fila, ".")  # Solo espacios libres
+            matriz = agregar(matriz, fila)
+        return matriz
 
-
-def mostrar_matriz(frame_matriz):
-    # Frame contenedor para la matriz - ya recibimos el frame como parámetro
-    matriz = interpretar_matriz()
-    # Verificar si la matriz se cargó correctamente
-    if matriz is None:
-        return
+def inicializar_tablero_fijo_con_matriz():
+    """Inicializa el tablero fijo con los obstáculos de la matriz del archivo"""
+    matriz_archivo = interpretar_matriz()
     
-    # Configurar el frame para expandirse
-    for i in range(longitud(matriz)):
+    if matriz_archivo and longitud(matriz_archivo) > 0:
+        FILAS = longitud(matriz_archivo)
+        COLUMNAS = longitud(matriz_archivo[0]) if longitud(matriz_archivo) > 0 else 10
+        print(f"Inicializando tablero fijo con dimensiones: {FILAS}x{COLUMNAS}")
+    else:
+        FILAS, COLUMNAS = 20, 10
+        matriz_archivo = None
+        print("Usando dimensiones por defecto para tablero fijo: 20x10")
+    
+    # Crear tablero fijo
+    tablero_fijo = []
+    for i in range(FILAS):
+        fila = []
+        for j in range(COLUMNAS):
+            # Verificar si hay obstáculo en esta posición según el archivo
+            if matriz_archivo and i < longitud(matriz_archivo) and j < longitud(matriz_archivo[i]):
+                celda_archivo = str(matriz_archivo[i][j]).strip()
+                
+                # Si es un obstáculo (+), marcarlo como fijo
+                if celda_archivo == "+":
+                    fila = agregar(fila, "#ff6b6b")  # Color rojo para obstáculos inamovibles
+                    print(f"Obstáculo fijo colocado en posición [{i},{j}]")
+                else:
+                    fila = agregar(fila, None)  # Espacio libre
+            else:
+                fila = agregar(fila, None)  # Espacio libre por defecto
+        tablero_fijo = agregar(tablero_fijo, fila)
+    
+    return tablero_fijo
+
+def inicializar_tablero(frame_matriz):
+    """Crea el tablero de juego como una matriz 2D de labels usando la matriz del archivo"""
+    # Cargar la matriz desde archivo
+    matriz_archivo = interpretar_matriz()
+    
+    if matriz_archivo and longitud(matriz_archivo) > 0:
+        # Usar dimensiones de la matriz del archivo
+        FILAS = longitud(matriz_archivo)
+        COLUMNAS = longitud(matriz_archivo[0]) if longitud(matriz_archivo) > 0 else 10
+        print(f"Usando matriz del archivo: {FILAS}x{COLUMNAS}")
+    else:
+        # Fallback a dimensiones estándar si no se puede cargar
+        FILAS, COLUMNAS = 20, 10
+        matriz_archivo = None
+        print("Usando dimensiones estándar: 20x10")
+    
+    # Crear matriz vacía para los labels
+    tablero = []
+    
+    # Configurar el frame para expandirse uniformemente
+    for i in range(FILAS):
         frame_matriz.grid_rowconfigure(i, weight=1)
-    for j in range(longitud(matriz[0])):
+    for j in range(COLUMNAS):
         frame_matriz.grid_columnconfigure(j, weight=1)
     
-    # Recorrer la matriz y crear labels coloreados
-    for i in range(longitud(matriz)): 
-        for j in range(longitud(matriz[i])): 
-            # Convertir explícitamente a string y eliminar espacios
-            celda = str(matriz[i][j]).strip()
-            # Asignar colores según el contenido O la posición
-            es_borde = (i == 0 or i == longitud(matriz) - 1 or j == 0 or j == longitud(matriz[i]) - 1)
-            
-            # Usar la posición o el contenido, lo que sea más fiable
-            if es_borde or celda == "+":
-                color = "#ff6b6b"  # Rojo brillante para bordes
+    # Crear las celdas del tablero
+    for i in range(FILAS):
+        fila = []
+        for j in range(COLUMNAS):
+            # Determinar color inicial basado en la matriz del archivo
+            if matriz_archivo and i < longitud(matriz_archivo) and j < longitud(matriz_archivo[i]):
+                celda_archivo = str(matriz_archivo[i][j]).strip()
+                # Si es un obstáculo (+), usar color especial
+                if celda_archivo == "+":
+                    color_inicial = "#ff6b6b"  # Rojo para obstáculos
+                    print(f"Obstáculo visual colocado en posición [{i},{j}]")
+                else:
+                    color_inicial = "#1a2a6d"  # Color normal
             else:
-                color = "#1a1a2e"  # Color de fondo para el interior
+                color_inicial = "#1a2a6d"  # Color de fondo inicial
             
-            # Crear una label con borde visible
-            label = tk.Label(
+            # Crear label como celda
+            celda = tk.Label(
                 frame_matriz,
-                bg=color,
+                bg=color_inicial,
                 borderwidth=1,
                 relief=tk.RAISED  # Da efecto 3D a las celdas
             )
-            
-            # Colocar en la cuadrícula para que se expanda
-            label.grid(row=i, column=j, sticky="nsew", padx=0, pady=0)
+            celda.grid(row=i, column=j, sticky="nsew", padx=0, pady=0)
+            fila = agregar(fila, celda)  
+        tablero = agregar(tablero, fila)  
 
+    return tablero
 
 # Definiciones de las piezas de Tetris (tetriminos)
 TETRIMINOS = {
@@ -484,10 +535,22 @@ COLORES_TETRIMINOS = {
 
 
 def inicializar_tablero(frame_matriz):
-    """Crea el tablero de juego como una matriz 2D de labels"""
-    FILAS, COLUMNAS = 20, 10  # Dimensiones estándar del Tetris
+    """Crea el tablero de juego como una matriz 2D de labels usando la matriz del archivo"""
+    # Cargar la matriz desde archivo
+    matriz_archivo = interpretar_matriz()
     
-    # Crear matriz vacía
+    if matriz_archivo and longitud(matriz_archivo) > 0:
+        # Usar dimensiones de la matriz del archivo
+        FILAS = longitud(matriz_archivo)
+        COLUMNAS = longitud(matriz_archivo[0]) if longitud(matriz_archivo) > 0 else 10
+        print(f"Usando matriz del archivo: {FILAS}x{COLUMNAS}")
+    else:
+        # Fallback a dimensiones estándar si no se puede cargar
+        FILAS, COLUMNAS = 20, 10
+        matriz_archivo = None
+        print("Usando dimensiones estándar: 20x10")
+    
+    # Crear matriz vacía para los labels
     tablero = []
     
     # Configurar el frame para expandirse uniformemente
@@ -500,115 +563,64 @@ def inicializar_tablero(frame_matriz):
     for i in range(FILAS):
         fila = []
         for j in range(COLUMNAS):
+            # Determinar color inicial basado en la matriz del archivo
+            if matriz_archivo and i < longitud(matriz_archivo) and j < longitud(matriz_archivo[i]):
+                celda_archivo = str(matriz_archivo[i][j]).strip()
+                # Si es un obstáculo (+), usar color especial
+                if celda_archivo == "+":
+                    color_inicial = "#ff6b6b"  # Rojo para obstáculos
+                    print(f"Obstáculo visual colocado en posición [{i},{j}]")
+                else:
+                    color_inicial = "#1a2a6d"  # Color normal
+            else:
+                color_inicial = "#1a2a6d"  # Color de fondo inicial
+            
             # Crear label como celda
             celda = tk.Label(
                 frame_matriz,
-                bg="#1a2a6d",  # Color de fondo inicial
+                bg=color_inicial,
                 borderwidth=1,
                 relief=tk.RAISED  # Da efecto 3D a las celdas
             )
             celda.grid(row=i, column=j, sticky="nsew", padx=0, pady=0)
-            fila = agregar(fila, celda)  # Usar agregar en vez de append
-        tablero = agregar(tablero, fila)  # Usar agregar en vez de append
+            fila = agregar(fila, celda)  
+        tablero = agregar(tablero, fila)  
     
     return tablero
 
-
-def iniciar_nuevas_piezas():
-    """Genera una pieza actual y la siguiente aleatoriamente"""
-    tipos = list(TETRIMINOS.keys())
-    pieza_actual = random.choice(tipos)
-    pieza_siguiente = random.choice(tipos)
-    return pieza_actual, pieza_siguiente
-
-
-def mostrar_siguiente_pieza(frame_siguiente, tipo_pieza):
-    """Muestra la siguiente pieza en el panel lateral"""
-    # Limpiar el frame
-    for widget in frame_siguiente.winfo_children():
-        widget.destroy()
+def inicializar_tablero_fijo_con_matriz():
+    """Inicializa el tablero fijo con los obstáculos de la matriz del archivo"""
+    matriz_archivo = interpretar_matriz()
     
-    # Configurar grid
-    pieza = TETRIMINOS[tipo_pieza][0]  # Tomar la primera rotación
-    filas, columnas = longitud(pieza), longitud(pieza[0]);
+    if matriz_archivo and longitud(matriz_archivo) > 0:
+        FILAS = longitud(matriz_archivo)
+        COLUMNAS = longitud(matriz_archivo[0]) if longitud(matriz_archivo) > 0 else 10
+        print(f"Inicializando tablero fijo con dimensiones: {FILAS}x{COLUMNAS}")
+    else:
+        FILAS, COLUMNAS = 20, 10
+        matriz_archivo = None
+        print("Usando dimensiones por defecto para tablero fijo: 20x10")
     
-    # Crear las celdas para la pieza
-    for i in range(filas):
-        for j in range(columnas):
-            color = COLORES_TETRIMINOS[tipo_pieza] if pieza[i][j] == 1 else "#1a2a2e"
-            celda = tk.Label(
-                frame_siguiente,
-                bg=color,
-                width=2, height=1,
-                borderwidth=1,
-                relief=tk.RAISED
-            )
-            # Centrar la pieza
-            celda.grid(row=i+1, column=j+1, padx=1, pady=1)
-
-
-def actualizar_tablero(game_data):
-    """Actualiza la visualización del tablero con la pieza actual"""
-    try:
-        # Verificar si el juego sigue activo
-        if not game_data.get("juego_activo", True):
-            return
-            
-        # Limpiar solo las celdas que no están fijas
-        tablero = game_data["tablero"]
-        tablero_fijo = game_data.get("tablero_fijo", [])
-        
-        # Primero pintar el fondo en todas las celdas
-        for i in range(longitud(tablero)):
-            for j in range(longitud(tablero[0])):
-
-                # Verificar si el widget todavía existe
-                try:
-                    if tablero[i][j].winfo_exists():
-                        # Si la celda no está fijada, pintarla de fondo
-                        if tablero_fijo is None or i >= longitud(tablero_fijo) or j >= longitud(tablero_fijo[i]) or tablero_fijo[i][j] is None:
-                            tablero[i][j].config(bg="#1a2a6d")
-                except:
-                    # Si hay error, puede que el widget ya no exista
-                    pass
-        
-        # Mostrar piezas fijas
-        if tablero_fijo:
-            for i in range(longitud(tablero_fijo)):
-                for j in range(longitud(tablero_fijo[i])):
-                    if tablero_fijo[i][j] is not None:
-                        try:
-                            if tablero[i][j].winfo_exists():
-                                tablero[i][j].config(bg=tablero_fijo[i][j])
-                        except:
-                            pass
-        
-        # Mostrar la pieza actual
-        pieza = TETRIMINOS[game_data["pieza_actual"]][game_data["rotacion"]]
-        color = COLORES_TETRIMINOS[game_data["pieza_actual"]]
-        
-        for i in range(longitud(pieza)):
-            for j in range(longitud(pieza[i])):
-                if pieza[i][j] == 1:
-                    y = game_data["y"] + i
-                    x = game_data["x"] + j
-                    
-                    # Verificar que está dentro de los límites
-                    if 0 <= y < longitud(tablero) and 0 <= x < longitud(tablero[0]):
-                        try:
-                            if tablero[y][x].winfo_exists():
-                                tablero[y][x].config(bg=color)
-                        except:
-                            pass
-        
-        # Imprimir el tablero en la consola después de actualizarlo
-        imprimir_tablero_en_consola(game_data)
-        
-    except Exception as e:
-        print(f"Error en actualizar_tablero: {e}")
-        # Si hay un error general, es posible que el juego ya no esté activo
-        game_data["juego_activo"] = False
-
+    # Crear tablero fijo
+    tablero_fijo = []
+    for i in range(FILAS):
+        fila = []
+        for j in range(COLUMNAS):
+            # Verificar si hay obstáculo en esta posición según el archivo
+            if matriz_archivo and i < longitud(matriz_archivo) and j < longitud(matriz_archivo[i]):
+                celda_archivo = str(matriz_archivo[i][j]).strip()
+                
+                # Si es un obstáculo (+), marcarlo como fijo
+                if celda_archivo == "+":
+                    fila = agregar(fila, "#ff6b6b")  # Color rojo para obstáculos inamovibles
+                    print(f"Obstáculo fijo colocado en posición [{i},{j}]")
+                else:
+                    fila = agregar(fila, None)  # Espacio libre
+            else:
+                fila = agregar(fila, None)  # Espacio libre por defecto
+        tablero_fijo = agregar(tablero_fijo, fila)
+    
+    return tablero_fijo
 
 def jugar(ventana, boton_jugar):
     # Pedir nombre del jugador antes de comenzar
@@ -702,11 +714,15 @@ def jugar(ventana, boton_jugar):
     boton_pausa.bind("<Enter>", lambda e: boton_pausa.config(bg="#ffe085"))
     boton_pausa.bind("<Leave>", lambda e: boton_pausa.config(bg="#ffd369"))
     
-    # Inicializar el juego y crear el tablero
+    # Inicializar el tablero visual CON LA MATRIZ DEL ARCHIVO
     tablero = inicializar_tablero(frame_matriz)
     
+    # Inicializar tablero fijo con obstáculos de la matriz del archivo
+    tablero_fijo = inicializar_tablero_fijo_con_matriz()
+    
     # Iniciar la pieza actual y su posición
-    pieza_actual, pieza_siguiente = iniciar_nuevas_piezas()
+    pieza_actual = random.choice(list(TETRIMINOS.keys()))
+    pieza_siguiente = random.choice(list(TETRIMINOS.keys()))
     
     # Mostrar la siguiente pieza en el panel
     mostrar_siguiente_pieza(frame_siguiente, pieza_siguiente)
@@ -714,6 +730,7 @@ def jugar(ventana, boton_jugar):
     # Variables de control del juego
     game_data = {
         "tablero": tablero,
+        "tablero_fijo": tablero_fijo,  # Usar el tablero fijo inicializado con obstáculos del archivo
         "pieza_actual": pieza_actual,
         "tipo_pieza": list(TETRIMINOS.keys())[0],  # Iniciar con la primera pieza
         "rotacion": 0,
@@ -985,18 +1002,16 @@ def salir_partida(game_data, ventana_menu):
 
 def mover_pieza(game_data, dx, dy):
     """Mueve la pieza actual en el tablero si es posible"""
+    # Verificar si el juego está pausado
+    if game_data.get("juego_pausado", False):
+        return
+    
     # Obtener datos actuales
     x = game_data["x"]
     y = game_data["y"]
     rotacion = game_data["rotacion"]
     pieza = TETRIMINOS[game_data["pieza_actual"]][rotacion]
-    tablero_fijo = game_data.get("tablero_fijo", None)
-    if tablero_fijo is None:
-        # Inicializar tablero fijo si no existe
-        filas = longitud(game_data["tablero"])
-        columnas = longitud(game_data["tablero"][0])
-        tablero_fijo = [[None for _ in range(columnas)] for _ in range(filas)]
-        game_data["tablero_fijo"] = tablero_fijo
+    tablero_fijo = game_data["tablero_fijo"]
 
     # Calcular nueva posición
     nuevo_x = x + dx
@@ -1007,27 +1022,43 @@ def mover_pieza(game_data, dx, dy):
         game_data["x"] = nuevo_x
         game_data["y"] = nuevo_y
         actualizar_tablero(game_data)
+        # Imprimir tablero después de cada movimiento
+        imprimir_tablero_en_consola(game_data)
     else:
         # Si la colisión es hacia abajo, fijar la pieza
         if dy == 1:
             fijar_pieza(game_data)
+            limpiar_lineas(game_data)
             # Generar nueva pieza
             nueva_pieza(game_data)
             actualizar_tablero(game_data)
+            # Imprimir tablero después de fijar pieza
+            imprimir_tablero_en_consola(game_data)
 
 def hay_colision(tablero_fijo, pieza, x, y):
     """Verifica si la pieza colisiona con el tablero fijo o los bordes"""
+    if not tablero_fijo or not pieza:
+        return False
+        
     filas = longitud(tablero_fijo)
-    columnas = longitud(tablero_fijo[0])
+    columnas = longitud(tablero_fijo[0]) if filas > 0 else 0
+    
     for i in range(longitud(pieza)):
         for j in range(longitud(pieza[i])):
-            if pieza[i][j]:
+            if pieza[i][j] == 1:  # Solo verificar celdas ocupadas de la pieza
                 pos_y = y + i
                 pos_x = x + j
-                if pos_x < 0 or pos_x >= columnas or pos_y < 0 or pos_y >= filas:
+                
+                # Verificar bordes del tablero
+                if pos_x < 0 or pos_x >= columnas or pos_y >= filas:
                     return True
-                if tablero_fijo[pos_y][pos_x] is not None:
-                    return True
+                
+                # Permitir que la pieza aparezca en la parte superior (pos_y < 0)
+                if pos_y >= 0:
+                    # Verificar colisión con piezas fijas
+                    if tablero_fijo[pos_y][pos_x] is not None:
+                        return True
+    
     return False
 
 def fijar_pieza(game_data):
@@ -1038,54 +1069,112 @@ def fijar_pieza(game_data):
     pieza = TETRIMINOS[game_data["pieza_actual"]][rotacion]
     color = COLORES_TETRIMINOS[game_data["pieza_actual"]]
     tablero_fijo = game_data["tablero_fijo"]
+    
+    if not tablero_fijo:
+        return
+    
     filas = longitud(tablero_fijo)
-    columnas = longitud(tablero_fijo[0])
+    columnas = longitud(tablero_fijo[0]) if filas > 0 else 0
+    
+    # Fijar cada celda de la pieza en el tablero fijo
     for i in range(longitud(pieza)):
         for j in range(longitud(pieza[i])):
-            if pieza[i][j]:
+            if pieza[i][j] == 1:  # Solo fijar celdas ocupadas
                 pos_y = y + i
                 pos_x = x + j
+                # Solo fijar si está dentro de los límites del tablero
                 if 0 <= pos_y < filas and 0 <= pos_x < columnas:
                     tablero_fijo[pos_y][pos_x] = color
-    limpiar_lineas(game_data)
 
 def limpiar_lineas(game_data):
     """Elimina líneas completas y actualiza la puntuación"""
     tablero_fijo = game_data["tablero_fijo"]
+    
+    if not tablero_fijo:
+        return
+    
     filas = longitud(tablero_fijo)
-    columnas = longitud(tablero_fijo[0])
+    columnas = longitud(tablero_fijo[0]) if filas > 0 else 0
+    
     nuevas_filas = []
     lineas_eliminadas = 0
-    for fila in tablero_fijo:
-        if all(celda is not None for celda in fila):
+    
+    # Verificar cada fila
+    for i in range(filas):
+        fila = tablero_fijo[i]
+        # Una línea está completa si todas las celdas tienen contenido (no None)
+        linea_completa = True
+        for celda in fila:
+            if celda is None:
+                linea_completa = False
+                break
+        
+        if linea_completa:
             lineas_eliminadas += 1
+            print(f"¡Línea {i} eliminada!")
         else:
-            nuevas_filas.append(fila)
+            nuevas_filas = agregar(nuevas_filas, fila)
+    
+    # Agregar filas vacías al principio por cada línea eliminada
     for _ in range(lineas_eliminadas):
-        nuevas_filas.insert(0, [None for _ in range(columnas)])
+        fila_vacia = []
+        for _ in range(columnas):
+            fila_vacia = agregar(fila_vacia, None)
+        nuevas_filas.insert(0, fila_vacia)
+    
+    # Actualizar el tablero fijo
     game_data["tablero_fijo"] = nuevas_filas
+    
+    # Actualizar puntuación
     if lineas_eliminadas > 0:
-        game_data["puntos"] += lineas_eliminadas * 100
+        puntos_ganados = lineas_eliminadas * 100
+        game_data["puntos"] += puntos_ganados
         game_data["label_puntos"].config(text=f"PUNTOS: {game_data['puntos']}")
+        print(f"¡{lineas_eliminadas} línea(s) eliminada(s)! +{puntos_ganados} puntos")
 
 def nueva_pieza(game_data):
     """Genera una nueva pieza y verifica si hay espacio para colocarla"""
+    # Cambiar pieza actual por la siguiente
     game_data["pieza_actual"] = game_data["pieza_siguiente"]
     game_data["pieza_siguiente"] = random.choice(list(TETRIMINOS.keys()))
     game_data["rotacion"] = 0
-    game_data["x"] = 5
+    
+    # Posición inicial (centro superior)
+    tablero_fijo = game_data["tablero_fijo"]
+    if tablero_fijo:
+        columnas = longitud(tablero_fijo[0])
+        game_data["x"] = columnas // 2 - 1  # Centrar horizontalmente
+    else:
+        game_data["x"] = 4  # Posición por defecto
+    
     game_data["y"] = 0
+    
+    # Actualizar visualización de siguiente pieza
     mostrar_siguiente_pieza(game_data["frame_siguiente"], game_data["pieza_siguiente"])
+    
     # Verificar si la nueva pieza colisiona al aparecer (game over)
     pieza = TETRIMINOS[game_data["pieza_actual"]][0]
     if hay_colision(game_data["tablero_fijo"], pieza, game_data["x"], game_data["y"]):
         game_data["juego_activo"] = False
-        messagebox.showinfo("Fin del juego", "¡Juego terminado!")
+        print("¡GAME OVER!")
+        messagebox.showinfo("Fin del juego", f"¡Juego terminado!\nPuntuación final: {game_data['puntos']}")
+        
+        # Registrar partida terminada en el índice
+        registrar_partida_en_indice(
+            game_data["nombre_jugador"],
+            f"partida_terminada_{game_data['puntos']}.txt",
+            game_data["puntos"]
+        )
+        
         game_data["ventana_juego"].destroy()
         game_data["boton_jugar"].config(state=tk.NORMAL)
 
 def rotar_pieza(game_data):
     """Rota la pieza actual si es posible"""
+    # Verificar si el juego está pausado
+    if game_data.get("juego_pausado", False):
+        return
+    
     rotacion_actual = game_data["rotacion"]
     pieza_tipo = game_data["pieza_actual"]
     num_rotaciones = longitud(TETRIMINOS[pieza_tipo])
@@ -1094,37 +1183,52 @@ def rotar_pieza(game_data):
     x = game_data["x"]
     y = game_data["y"]
     tablero_fijo = game_data["tablero_fijo"]
+    
     if not hay_colision(tablero_fijo, pieza, x, y):
         game_data["rotacion"] = nueva_rotacion
         actualizar_tablero(game_data)
+        # Imprimir tablero después de rotar
+        imprimir_tablero_en_consola(game_data)
 
 def caida_automatica(ventana_juego, game_data):
     """Función para la caída automática de las piezas"""
-    # Verificar si el juego todavía está activo y la ventana existe
     try:
-        if ventana_juego.winfo_exists() and game_data["juego_activo"] and not game_data.get("juego_pausado", False):
+        # Verificar si el juego todavía está activo, la ventana existe y no está pausado
+        if (ventana_juego.winfo_exists() and 
+            game_data.get("juego_activo", False) and 
+            not game_data.get("juego_pausado", False)):
+            
             # Mover la pieza hacia abajo
             mover_pieza(game_data, 0, 1)
+            
             # Programar la próxima caída
             ventana_juego.after(1000, lambda: caida_automatica(ventana_juego, game_data))
-    except:
-        # Si hay error al verificar la ventana, probablemente ya no existe
+            
+    except tk.TclError:
+        # Si hay error al verificar la ventana (probablemente ya no existe)
         game_data["juego_activo"] = False
-
+    except Exception as e:
+        print(f"Error en caída automática: {e}")
+        game_data["juego_activo"] = False
 
 def imprimir_tablero_en_consola(game_data):
     """Imprime el estado actual del tablero en la consola de manera ordenada y visual"""
-    print("\n" + "="*30)
+    print("\n" + "="*50)
     print(f"Jugador: {game_data['nombre_jugador']} | Puntos: {game_data['puntos']}")
-    print("="*30)
+    print("="*50)
     
-    # Crear una representación temporal del tablero actual
+    # Obtener datos del tablero
     tablero_fijo = game_data.get("tablero_fijo", [])
     if not tablero_fijo:
-        return  # Si no hay tablero, no hay nada que mostrar
+        print("Error: No hay tablero para mostrar")
+        return
     
     filas = longitud(tablero_fijo)
-    columnas = longitud(tablero_fijo[0])
+    columnas = longitud(tablero_fijo[0]) if filas > 0 else 0
+    
+    if filas == 0 or columnas == 0:
+        print("Error: Tablero vacío")
+        return
     
     # Crear una copia del tablero fijo para visualización
     tablero_visual = []
@@ -1138,14 +1242,17 @@ def imprimir_tablero_en_consola(game_data):
         tablero_visual = agregar(tablero_visual, fila)
     
     # Agregar la pieza actual al tablero visual
-    pieza = TETRIMINOS[game_data["pieza_actual"]][game_data["rotacion"]]
-    for i in range(longitud(pieza)):
-        for j in range(longitud(pieza[i])):
-            if pieza[i][j] == 1:
-                y = game_data["y"] + i
-                x = game_data["x"] + j
-                if 0 <= y < filas and 0 <= x < columnas:
-                    tablero_visual[y][x] = "□"  # Pieza en movimiento
+    try:
+        pieza = TETRIMINOS[game_data["pieza_actual"]][game_data["rotacion"]]
+        for i in range(longitud(pieza)):
+            for j in range(longitud(pieza[i])):
+                if pieza[i][j] == 1:
+                    y = game_data["y"] + i
+                    x = game_data["x"] + j
+                    if 0 <= y < filas and 0 <= x < columnas:
+                        tablero_visual[y][x] = "□"  # Pieza en movimiento
+    except Exception as e:
+        print(f"Error al agregar pieza actual: {e}")
     
     # Imprimir el borde superior
     print("╔" + "══" * columnas + "╗")
@@ -1193,13 +1300,13 @@ def mostrar_partidas_guardadas(ventana_principal, boton_jugar):
         label_titulo = tk.Label(
             ventana_cargar,
             text="PARTIDAS GUARDADAS",
-            bg="#1a1a2e", fg="white",
+            bg="#1a2a2e", fg="white",
             font=FUENTE_RETRO
         )
         label_titulo.pack(pady=20)
         
         # Frame para la lista de partidas
-        frame_lista = tk.Frame(ventana_cargar, bg="#1a1a2e")
+        frame_lista = tk.Frame(ventana_cargar, bg="#1a2a2e")
         frame_lista.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
         
         # Scrollbar para la lista
@@ -1222,12 +1329,12 @@ def mostrar_partidas_guardadas(ventana_principal, boton_jugar):
         for archivo in archivos:
             info = leer_info_partida(f"{directorio_guardados}/{archivo}")
             if info:
-                partidas_info.append((archivo, info))
+                partidas_info = agregar(partidas_info, (archivo, info))
                 # Mostrar formato: "Jugador - Puntos - Fecha"
                 listbox_partidas.insert(tk.END, f"{info['jugador']} - {info['puntos']} pts - {info['fecha']}")
         
         # Frame para botones
-        frame_botones = tk.Frame(ventana_cargar, bg="#1a1a2e")
+        frame_botones = tk.Frame(ventana_cargar, bg="#1a2a2e")
         frame_botones.pack(pady=20)
         
         # Botón cargar
@@ -1288,7 +1395,7 @@ def mostrar_partidas_guardadas(ventana_principal, boton_jugar):
         boton_cerrar = tk.Button(
             frame_botones,
             text="CERRAR",
-            bg="#ffd369", fg="#1a2a2e",
+            bg="#ffd369", fg="#1a2e2e",
             font=FUENTE_RETRO,
             width=10, height=2,
             command=ventana_cargar.destroy,
@@ -1350,7 +1457,8 @@ def cargar_partida(ruta_archivo, ventana_principal, boton_jugar):
                 elif linea.startswith("Siguiente pieza:"):
                     datos_partida['pieza_siguiente'] = linea.replace("Siguiente pieza:", "").strip()
                 elif leyendo_tablero and linea:
-                    tablero_lineas.append(linea)
+                    tablero_lineas = agregar(tablero_lineas, linea)
+                    
         
         # Iniciar juego con datos cargados
         iniciar_juego_cargado(datos_partida, tablero_lineas, ventana_principal, boton_jugar)
@@ -1358,6 +1466,68 @@ def cargar_partida(ruta_archivo, ventana_principal, boton_jugar):
     except Exception as e:
         messagebox.showerror("Error", f"Error al cargar partida: {str(e)}")
 
+
+def iniciar_nuevas_piezas():
+    """Inicializa una pieza actual y una siguiente pieza aleatoriamente"""
+    pieza_actual = random.choice(list(TETRIMINOS.keys()))
+    pieza_siguiente = random.choice(list(TETRIMINOS.keys()))
+    return pieza_actual, pieza_siguiente
+
+def mostrar_siguiente_pieza(frame_siguiente, tipo_pieza):
+    """Muestra la siguiente pieza en el frame correspondiente"""
+    # Limpiar el frame
+    for widget in frame_siguiente.winfo_children():
+        widget.destroy()
+    
+    # Obtener la pieza y su color
+    pieza = TETRIMINOS[tipo_pieza][0]  # Primera rotación
+    color = COLORES_TETRIMINOS[tipo_pieza]
+    
+    # Crear mini tablero para mostrar la pieza
+    for i in range(longitud(pieza)):
+        for j in range(longitud(pieza[i])):
+            if pieza[i][j]:
+                mini_celda = tk.Label(
+                    frame_siguiente,
+                    bg=color,
+                    width=2,
+                    height=1,
+                    borderwidth=1,
+                    relief=tk.RAISED
+                )
+                mini_celda.grid(row=i, column=j, padx=1, pady=1)
+
+def actualizar_tablero(game_data):
+    """Actualiza la visualización del tablero con la pieza actual y las piezas fijas"""
+    tablero = game_data["tablero"]
+    tablero_fijo = game_data["tablero_fijo"]
+    pieza_actual = TETRIMINOS[game_data["pieza_actual"]][game_data["rotacion"]]
+    color_pieza = COLORES_TETRIMINOS[game_data["pieza_actual"]]
+    x = game_data["x"]
+    y = game_data["y"]
+    
+    # Limpiar tablero visual y mostrar piezas fijas
+    for i in range(longitud(tablero)):
+        for j in range(longitud(tablero[i])):
+            if i < longitud(tablero_fijo) and j < longitud(tablero_fijo[0]):
+                if tablero_fijo[i][j] is not None:
+                    # Mostrar pieza fija
+                    tablero[i][j].config(bg=tablero_fijo[i][j])
+                else:
+                    # Mostrar espacio vacío
+                    tablero[i][j].config(bg="#1a2a6d")
+            else:
+                # Mostrar espacio vacío si no hay datos del tablero fijo
+                tablero[i][j].config(bg="#1a2a6d")
+    
+    # Mostrar pieza actual
+    for i in range(longitud(pieza_actual)):
+        for j in range(longitud(pieza_actual[i])):
+            if pieza_actual[i][j] == 1:
+                pos_y = y + i
+                pos_x = x + j
+                if 0 <= pos_y < longitud(tablero) and 0 <= pos_x < longitud(tablero[0]):
+                    tablero[pos_y][pos_x].config(bg=color_pieza)
 
 def iniciar_juego_cargado(datos_partida, tablero_lineas, ventana_principal, boton_jugar):
     """Inicia el juego con una partida cargada"""
@@ -1397,16 +1567,21 @@ def iniciar_juego_cargado(datos_partida, tablero_lineas, ventana_principal, boto
     label_puntos = tk.Label(frame_info, text=f"PUNTOS: {datos_partida['puntos']}", bg="#1a2a2e", fg="white", font=FUENTE_RETRO)
     label_puntos.pack(pady=20)
     
-    # Inicializar tablero
+    # Inicializar tablero CON LA MATRIZ DEL ARCHIVO
     tablero = inicializar_tablero(frame_matriz)
     
-    # Recrear tablero fijo desde los datos guardados
-    tablero_fijo = [[None for _ in range(10)] for _ in range(20)]
+    # Inicializar tablero fijo base con obstáculos del archivo
+    tablero_fijo_base = inicializar_tablero_fijo_con_matriz()
+    
+    # Recrear tablero fijo combinando obstáculos del archivo con datos guardados
+    FILAS = longitud(tablero_fijo_base)
+    COLUMNAS = longitud(tablero_fijo_base[0])
+    
     for i, linea in enumerate(tablero_lineas):
-        if i < 20:  # Asegurar que no exceda las filas del tablero
+        if i < FILAS:  # Asegurar que no exceda las filas del tablero
             for j, char in enumerate(linea):
-                if j < 10 and char == 'X':  # Asegurar que no exceda las columnas
-                    tablero_fijo[i][j] = "#808080"  # Color gris para piezas fijas
+                if j < COLUMNAS and char == 'X':  # Piezas fijas guardadas
+                    tablero_fijo_base[i][j] = "#808080"  # Color gris para piezas fijas
     
     # Mostrar siguiente pieza
     mostrar_siguiente_pieza(frame_siguiente, datos_partida['pieza_siguiente'])
@@ -1414,7 +1589,7 @@ def iniciar_juego_cargado(datos_partida, tablero_lineas, ventana_principal, boto
     # Variables de control del juego con datos cargados
     game_data = {
         "tablero": tablero,
-        "tablero_fijo": tablero_fijo,
+        "tablero_fijo": tablero_fijo_base,  # Usar el tablero que combina archivo + datos guardados
         "pieza_actual": datos_partida['pieza_actual'],
         "rotacion": datos_partida['rotacion'],
         "x": datos_partida['x'],
@@ -1431,7 +1606,7 @@ def iniciar_juego_cargado(datos_partida, tablero_lineas, ventana_principal, boto
     
     # Botón de pausa
     boton_pausa = tk.Button(
-        frame_info, text="PAUSA", bg="#ffd369", fg="#1a2a2e", font=FUENTE_RETRO,
+        frame_info, text="PAUSA", bg="#ffd369", fg="#1a2e2e", font=FUENTE_RETRO,
         width=10, height=2, command=lambda: mostrar_menu_pausa(ventana_juego, game_data), relief=tk.GROOVE
     )
     boton_pausa.pack(pady=20)
