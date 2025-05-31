@@ -27,7 +27,7 @@ def iniciar_juego():
     ventana.config(bg="#1a1a2e")  # Azul marino oscuro
     
     # Cargar y mostrar el logo de Tetris
-    img = Image.open("Código/logo.png")
+    img = Image.open("logo.png")
     # Redimensionar la imagen
     img = img.resize((250, 125), Image.Resampling.LANCZOS)
     title = ImageTk.PhotoImage(img)
@@ -70,7 +70,7 @@ def iniciar_juego():
         bg="#e84545", fg="white",
         font=FUENTE_RETRO,
         width=10, height=2,
-        command=ventana.quit,
+        command=ventana.destroy,
         relief=tk.GROOVE
     )
     boton_salir.pack(pady=20)
@@ -134,7 +134,7 @@ def ventana_estadisticas():
     
     # Cargar y mostrar estadísticas
     try:
-        archivo_indice = "Código/indiceJuego.txt"
+        archivo_indice = "indiceJuego.txt"
         
         if not os.path.exists(archivo_indice):
             texto_estadisticas.insert(tk.END, "No hay partidas registradas aún.\n\n")
@@ -822,7 +822,7 @@ def guardar_partida(game_data, ventana_menu=None):
     """Guarda el estado actual de la partida en un archivo con el nombre del jugador"""
     try:
         # Crear directorio si no existe
-        directorio_guardados = "Código/partidas_guardadas"
+        directorio_guardados = "partidas_guardadas"
         if not os.path.exists(directorio_guardados):
             os.makedirs(directorio_guardados)
         
@@ -880,7 +880,7 @@ def registrar_partida_en_indice(nombre_jugador, nombre_archivo, puntos):
     """Registra la partida guardada en el archivo índice"""
     try:
         # Crear el archivo de índice si no existe
-        archivo_indice = "Código/indiceJuego.txt"
+        archivo_indice = "indiceJuego.txt"
         with open(archivo_indice, "a") as indice:
             # Agregar entrada al índice
             import time
@@ -1183,7 +1183,7 @@ def imprimir_tablero_en_consola(game_data):
 def mostrar_partidas_guardadas(ventana_principal, boton_jugar):
     """Muestra una ventana con las partidas guardadas disponibles"""
     try:
-        directorio_guardados = "Código/partidas_guardadas"
+        directorio_guardados = "partidas_guardadas"
         if not os.path.exists(directorio_guardados):
             messagebox.showinfo("Sin partidas", "No hay partidas guardadas disponibles.")
             return
