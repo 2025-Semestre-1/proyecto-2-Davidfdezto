@@ -2,3 +2,5 @@ David|David_20250527_203149.txt|0|27/05/2025 20:31:49
 ad|partida_terminada_0.txt|0|30/05/2025 13:23:18
 David|David_20250530_132523.txt|400|30/05/2025 13:25:23
 da|da_20250530_133043.txt|0|30/05/2025 13:30:43
+da|partida_terminada_0.txt|0|31/05/2025 15:23:46
+da|partida_terminada_100.txt|100|31/05/2025 15:26:20

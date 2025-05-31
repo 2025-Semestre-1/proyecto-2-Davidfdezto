@@ -233,7 +233,6 @@ def ventana_estadisticas():
     texto_estadisticas.insert(tk.END, "Ranking de las últimas partidas:\n\n")
     
 
-
 def interpretar_matriz():
     """Lee la matriz desde un archivo de texto y detecta obstáculos como '+'"""
     try:
@@ -532,95 +531,6 @@ COLORES_TETRIMINOS = {
     'U': "#ff00ff",  # Magenta
     '+': "#ff8800"   # Naranja brillante
 }
-
-
-def inicializar_tablero(frame_matriz):
-    """Crea el tablero de juego como una matriz 2D de labels usando la matriz del archivo"""
-    # Cargar la matriz desde archivo
-    matriz_archivo = interpretar_matriz()
-    
-    if matriz_archivo and longitud(matriz_archivo) > 0:
-        # Usar dimensiones de la matriz del archivo
-        FILAS = longitud(matriz_archivo)
-        COLUMNAS = longitud(matriz_archivo[0]) if longitud(matriz_archivo) > 0 else 10
-        print(f"Usando matriz del archivo: {FILAS}x{COLUMNAS}")
-    else:
-        # Fallback a dimensiones estándar si no se puede cargar
-        FILAS, COLUMNAS = 20, 10
-        matriz_archivo = None
-        print("Usando dimensiones estándar: 20x10")
-    
-    # Crear matriz vacía para los labels
-    tablero = []
-    
-    # Configurar el frame para expandirse uniformemente
-    for i in range(FILAS):
-        frame_matriz.grid_rowconfigure(i, weight=1)
-    for j in range(COLUMNAS):
-        frame_matriz.grid_columnconfigure(j, weight=1)
-    
-    # Crear las celdas del tablero
-    for i in range(FILAS):
-        fila = []
-        for j in range(COLUMNAS):
-            # Determinar color inicial basado en la matriz del archivo
-            if matriz_archivo and i < longitud(matriz_archivo) and j < longitud(matriz_archivo[i]):
-                celda_archivo = str(matriz_archivo[i][j]).strip()
-                # Si es un obstáculo (+), usar color especial
-                if celda_archivo == "+":
-                    color_inicial = "#ff6b6b"  # Rojo para obstáculos
-                    print(f"Obstáculo visual colocado en posición [{i},{j}]")
-                else:
-                    color_inicial = "#1a2a6d"  # Color normal
-            else:
-                color_inicial = "#1a2a6d"  # Color de fondo inicial
-            
-            # Crear label como celda
-            celda = tk.Label(
-                frame_matriz,
-                bg=color_inicial,
-                borderwidth=1,
-                relief=tk.RAISED  # Da efecto 3D a las celdas
-            )
-            celda.grid(row=i, column=j, sticky="nsew", padx=0, pady=0)
-            fila = agregar(fila, celda)  
-        tablero = agregar(tablero, fila)  
-    
-    return tablero
-
-def inicializar_tablero_fijo_con_matriz():
-    """Inicializa el tablero fijo con los obstáculos de la matriz del archivo"""
-    matriz_archivo = interpretar_matriz()
-    
-    if matriz_archivo and longitud(matriz_archivo) > 0:
-        FILAS = longitud(matriz_archivo)
-        COLUMNAS = longitud(matriz_archivo[0]) if longitud(matriz_archivo) > 0 else 10
-        print(f"Inicializando tablero fijo con dimensiones: {FILAS}x{COLUMNAS}")
-    else:
-        FILAS, COLUMNAS = 20, 10
-        matriz_archivo = None
-        print("Usando dimensiones por defecto para tablero fijo: 20x10")
-    
-    # Crear tablero fijo
-    tablero_fijo = []
-    for i in range(FILAS):
-        fila = []
-        for j in range(COLUMNAS):
-            # Verificar si hay obstáculo en esta posición según el archivo
-            if matriz_archivo and i < longitud(matriz_archivo) and j < longitud(matriz_archivo[i]):
-                celda_archivo = str(matriz_archivo[i][j]).strip()
-                
-                # Si es un obstáculo (+), marcarlo como fijo
-                if celda_archivo == "+":
-                    fila = agregar(fila, "#ff6b6b")  # Color rojo para obstáculos inamovibles
-                    print(f"Obstáculo fijo colocado en posición [{i},{j}]")
-                else:
-                    fila = agregar(fila, None)  # Espacio libre
-            else:
-                fila = agregar(fila, None)  # Espacio libre por defecto
-        tablero_fijo = agregar(tablero_fijo, fila)
-    
-    return tablero_fijo
 
 def jugar(ventana, boton_jugar):
     # Pedir nombre del jugador antes de comenzar
